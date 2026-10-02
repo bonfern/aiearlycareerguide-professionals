@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Career Professionals | AI Early Career Guide</title>
+<style>
+:root{font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#17253e;background:#f4f7fc}*{box-sizing:border-box}body{margin:0}header{background:#102447;color:white;padding:20px max(24px,calc((100vw - 960px)/2));font-weight:750}header small{display:block;color:#bcd0ed;font-weight:400;margin-top:5px}main{max-width:960px;margin:42px auto;padding:0 22px}.panel{background:#fff;border-radius:18px;padding:34px;box-shadow:0 8px 30px #10244712}h1{font-size:clamp(29px,4vw,44px);margin:0 0 14px}h2{font-size:clamp(23px,3vw,29px);margin:0 0 13px}p{line-height:1.6;color:#52617b}.eyebrow{color:#2163be;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:11px}.btn{border:0;border-radius:9px;padding:13px 20px;background:#1c59ac;color:white;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px}.btn.secondary{background:#e9eff9;color:#173e78;margin-right:8px}.btn:disabled{opacity:.45;cursor:not-allowed}.hidden{display:none!important}.progress{height:8px;background:#e9eff9;border-radius:8px;margin:19px 0 28px}.progress span{display:block;height:100%;background:#2673c9;border-radius:8px;transition:width .2s}label{display:block;font-weight:650;margin:12px 0 8px}input:not([type=checkbox]),select,textarea{width:100%;padding:13px;border:1px solid #bfcce0;border-radius:8px;font:inherit;background:white;color:#17253e}textarea{min-height:105px}.hint{font-size:13px;color:#65748b;margin:10px 0}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:22px 0}.card{border:1px solid #dbe4f2;padding:18px;border-radius:12px}.card strong{display:block;margin-bottom:7px}.review{padding:14px 0;border-bottom:1px solid #e7ecf5;display:flex;justify-content:space-between;align-items:center;gap:12px}.review strong{display:block;margin-bottom:5px}.review .value{font-size:15px;color:#415371;white-space:pre-wrap}.notice{background:#f1f6ff;padding:15px;border-radius:9px;color:#345177;margin:20px 0}.choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:15px}.choice{display:flex;align-items:center;gap:10px;border:1.5px solid #ced9e9;border-radius:11px;padding:14px 12px;font-weight:550;margin:0;cursor:pointer;min-height:54px}.choice.selected{border-color:#2673c9;background:#eef5ff;box-shadow:0 0 0 1px #2673c9}.choice input{flex:0 0 auto;accent-color:#1c59ac;width:17px;height:17px;margin:0}.freeform{margin-top:14px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.muted{font-size:13px;color:#63738a}.error{color:#b42318;font-size:13px;font-weight:650;min-height:20px;margin:12px 0 0}.linkbtn{background:none;border:0;color:#1c59ac;font-weight:700;cursor:pointer;padding:8px;white-space:nowrap}.num{color:#59708f;font-size:13px}.sectionhead{font-weight:750;margin:23px 0 0}.tag{display:inline-block;background:#e8f1ff;border-radius:50px;padding:5px 12px;font-size:13px;color:#245c9b}.footeractions{margin-top:19px}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #89baf9;outline-offset:3px}@media(max-width:600px){main{margin:22px auto}.panel{padding:22px}.choice-grid{grid-template-columns:1fr}.review{align-items:flex-start}}
+</style>
+</head>
+<body>
+<header>AI EARLY CAREER GUIDE <small>Career Professionals · Private beta V1</small></header>
+<main>
+<section id="welcome" class="panel"><div class="eyebrow">Your next career chapter</div><h1>Discover your professional direction</h1><p>Build a detailed professional profile, reflect on your experience and explore your next career move through a structured assessment.</p><div class="cards"><div class="card"><strong>Detailed professional profile</strong><p>One question at a time, with choices wherever possible.</p></div><div class="card"><strong>Adaptive interview</strong><p>Try the guided demo, or complete your live AI interview.</p></div><div class="card"><strong>Career roadmap</strong><p>Your answers can be exported; your personalised report is the next release.</p></div></div><div class="notice">Guided demo works offline. In the live beta, your profile and answers are saved securely in Firestore and sent to OpenAI for question generation. Only use information you are comfortable sharing in this private test. Payment and career reports are not yet available.</div><button id="startBtn" class="btn" type="button">Start professional profile →</button><button id="resumeBtn" class="btn secondary hidden" type="button">Resume my saved interview →</button><div id="resumeError" class="error" aria-live="polite"></div></section>
+<section id="profile" class="panel hidden"><div class="eyebrow">Professional profile</div><div class="row"><h2 id="stepTitle"></h2><span id="sectionLabel" class="tag"></span></div><div class="progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><span id="bar"></span></div><form id="profileForm"><label id="question" for="answer"></label><p id="hint" class="hint"></p><div id="field"></div><div id="error" class="error" aria-live="polite"></div><div class="footeractions"><button type="button" class="btn secondary" id="backBtn">← Back</button><button type="submit" class="btn" id="nextBtn">Continue →</button></div></form></section>
+<section id="review" class="panel hidden"><div class="eyebrow">Profile review</div><h2>Your professional profile</h2><p>Review your answers. Select <strong>Edit</strong> beside any item to change it without starting again.</p><div id="answers"></div><button class="btn secondary" id="reviewBack">← Back to profile</button><button class="btn secondary" id="interviewBtn">Try guided demo →</button><button class="btn" id="liveStartBtn">Start live AI interview →</button></section>
+<section id="interview" class="panel hidden"><div class="eyebrow">Interview preview · Preset questions, not live AI</div><div class="row"><h2 id="interviewTitle"></h2><span class="tag" id="interviewCategory"></span></div><div class="progress" role="progressbar" aria-label="Interview completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="interviewProgress"><span id="interviewBar"></span></div><h3 id="interviewQuestion"></h3><p id="interviewHint" class="hint"></p><div id="interviewField"></div><div id="interviewError" class="error" aria-live="polite"></div><p class="hint">Offline preview: these are preset questions tailored to your profile. Live AI follow-ups are not yet connected.</p><div class="footeractions"><button class="btn secondary" id="interviewBack" type="button">← Back</button><button class="btn" id="interviewNext" type="button">Continue →</button></div></section>
+<section id="liveSetup" class="panel hidden"><div class="eyebrow">Secure development preview</div><h2>Live adaptive AI interview</h2><p>Each question is generated based on your profile and previous responses. Your answers are sent to the server and OpenAI to create the next question. This is a development preview, not the paid assessment.</p><div class="notice">Private beta: your answers are stored in Firebase for this test and shared with OpenAI to generate follow-up questions. Your preview access expires after 7 days. Records remain until deleted by you or removed by the administrator; the optional 30-day Firestore deletion rule must be enabled separately. Please avoid uploading confidential employer information.</div><label for="previewCode">Private preview access code</label><input id="previewCode" type="password" autocomplete="off" placeholder="Code set in your Vercel environment"><p class="hint">Enter the private tester code from the project owner. Never enter an OpenAI API key here.</p><label class="choice" for="consent" style="margin-top:18px"><input id="consent" type="checkbox"><span>I understand my profile and interview answers are stored for this private beta and shared with OpenAI to generate questions.</span></label><div class="error" id="liveSetupError" aria-live="polite"></div><button id="liveSetupBack" class="btn secondary" type="button">← Back to profile</button><button id="liveBegin" class="btn" type="button">Begin live interview →</button></section>
+<section id="liveInterview" class="panel hidden"><div class="eyebrow">Live AI interview</div><div class="row"><h2 id="liveTitle">Question 1</h2><span class="tag" id="liveCategory"></span></div><div class="progress" role="progressbar" aria-label="AI interview progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="liveProgress"><span id="liveBar"></span></div><h3 id="liveQuestion"></h3><p id="liveHint" class="hint"></p><div id="liveField"></div><div id="liveError" class="error" aria-live="polite"></div><p class="hint">Usually 10–15 short questions. The AI can ask relevant follow-ups or finish after sufficient evidence. You may correct your most recent answer.</p><div class="footeractions"><button type="button" class="btn secondary" id="liveBack">← Back</button><button type="button" class="btn" id="liveNext">Continue →</button><button type="button" class="btn hidden" id="retryNext">Retry generating question →</button></div></section>
+<section id="complete" class="panel hidden"><div class="eyebrow">Assessment complete</div><h2>You've completed the interview</h2><p>Your answers have been saved to your private beta session. You can export them now. AI reports, payment and email will be introduced in later releases.</p><button class="btn" id="downloadBtn">Download my answers (JSON)</button><button class="btn secondary" id="restartBtn">Start again</button><button class="btn secondary" id="deleteSessionBtn">Delete my test session</button><div class="error" id="deleteError" aria-live="polite"></div></section>
+</main>
+<script>
+'use strict';
+// Every question collects exactly one attribute. All stored fields have stable IDs.
+const qs = [
+ {id:'employmentStatus',section:'Current role',q:'What is your current employment status?',type:'single',required:true,options:['Employed full-time','Employed part-time','Self-employed / freelancer','Between jobs','On a career break','Returning to work','Student / recent graduate','Other']},
+ {id:'currentJobTitle',section:'Current role',q:'What is your current or most recent job title?',type:'text',required:true,placeholder:'e.g. Operations Manager'},
+ {id:'currentIndustry',section:'Current role',q:'Which industry do you currently work in?',type:'single',required:true,options:['Information technology / software','Banking / financial services','Insurance','Healthcare / pharmaceuticals','Manufacturing / industrial','Retail / e-commerce','Consumer goods / FMCG','Consulting / professional services','Education','Media / advertising','Telecommunications','Energy / utilities','Construction / real estate','Hospitality / travel','Logistics / supply chain','Government / public sector','Non-profit / social impact','Other']},
+ {id:'currentFunction',section:'Current role',q:'Which function best describes your current work?',type:'single',required:true,options:['Operations','Sales / business development','Marketing / communications','Finance / accounting','Human resources','Information technology','Data / analytics','Product management','Project / programme management','Strategy / transformation','Process excellence / quality','Customer service / customer success','Supply chain / procurement','Engineering / research','Legal / compliance','Teaching / training','General management','Other']},
+ {id:'experience',section:'Experience',q:'How many years of total professional experience do you have?',type:'single',required:true,options:['Less than 1 year','1–2 years','3–5 years','6–10 years','11–15 years','16–20 years','21–25 years','More than 25 years']},
+ {id:'qualification',section:'Education',q:'What is your highest educational qualification?',type:'single',required:true,options:['Secondary / higher secondary','Diploma','Bachelor’s degree','Master’s degree','MBA / PGDM','Doctorate / PhD','Professional qualification (e.g. CA, CS)','Other']},
+ {id:'studyField',section:'Education',q:'What was your main field of study?',type:'single',required:false,options:['Business / management','Commerce / accounting','Engineering','Computer science / IT','Science / mathematics','Arts / humanities','Economics','Law','Medicine / health sciences','Education','Design / creative arts','Vocational / technical','Other']},
+ {id:'certifications',section:'Education',q:'Do you hold any relevant professional certifications?',type:'single',required:false,options:['Yes','No','Currently pursuing']},
+ {id:'certificationDetails',section:'Education',q:'Which professional certifications do you hold or are you pursuing?',type:'text',required:false,placeholder:'e.g. PMP, Six Sigma Black Belt, AWS (leave blank if none)',showIf:d=>d.certifications==='Yes'||d.certifications==='Currently pursuing'},
+ {id:'seniority',section:'Experience',q:'What is your current level of responsibility?',type:'single',required:true,options:['Entry-level individual contributor','Experienced individual contributor / specialist','Team lead / supervisor','Manager','Senior manager','Head of function / department','Director / associate director','Vice president / executive','Founder / business owner','Other']},
+ {id:'directReports',section:'Experience',q:'How many people currently report directly to you?',type:'single',required:false,options:['None','1–3','4–7','8–15','16–30','More than 30','Not applicable']},
+ {id:'skills',section:'Strengths',q:'Which five skills best represent your professional strengths?',type:'multi',required:true,max:5,options:['People leadership','Strategic thinking','Problem-solving','Communication','Stakeholder management','Project management','Process improvement','Data analysis','Technical expertise','Financial management','Sales / negotiation','Customer relationship management','Creativity / innovation','Change management','Coaching / mentoring','Research','Planning / organisation','Other']},
+ {id:'careerObjective',section:'Career goals',q:'What is your primary career objective?',type:'single',required:true,options:['Get promoted','Find a new job in the same field','Move into a different function','Move into a different industry','Transition into leadership','Return to work after a break','Start a business / freelance','Explore career possibilities','Build skills in my current role','Other']},
+ {id:'targetJobTitle',section:'Career goals',q:'What job title would you like to pursue?',type:'text',required:false,placeholder:'e.g. Director of Transformation (optional)'},
+ {id:'targetIndustry',section:'Career goals',q:'Which industry would you prefer for your next role?',type:'single',required:false,options:['Same as my current industry','Open to any industry','Information technology / software','Banking / financial services','Insurance','Healthcare / pharmaceuticals','Manufacturing / industrial','Retail / e-commerce','Consumer goods / FMCG','Consulting / professional services','Education','Media / advertising','Telecommunications','Energy / utilities','Construction / real estate','Hospitality / travel','Logistics / supply chain','Government / public sector','Non-profit / social impact','Other']},
+ {id:'targetFunction',section:'Career goals',q:'Which function would you prefer for your next role?',type:'single',required:false,options:['Same as my current function','Open to different functions','Operations','Sales / business development','Marketing / communications','Finance / accounting','Human resources','Information technology','Data / analytics','Product management','Project / programme management','Strategy / transformation','Process excellence / quality','Customer service / customer success','Supply chain / procurement','Engineering / research','Legal / compliance','Teaching / training','General management','Other']},
+ {id:'workArrangement',section:'Preferences',q:'What work arrangement do you prefer?',type:'single',required:false,options:['On-site','Hybrid','Fully remote','Flexible / no preference','Not applicable']},
+ {id:'relocation',section:'Preferences',q:'Are you willing to relocate for a career opportunity?',type:'single',required:false,options:['Yes, domestically','Yes, internationally','Yes, either','No','Depends on the role','Not sure']},
+ {id:'timeframe',section:'Preferences',q:'When would you ideally make your next career move?',type:'single',required:true,options:['Immediately','Within 3 months','3–6 months','6–12 months','1–2 years','No fixed timeline']}
+];
+const data={};const interviewAnswers={};let step=0,interviewStep=0,fromReview=false,assessmentMode='demo';
+const $=id=>document.getElementById(id);
+function visibleIndices(){return qs.map((q,i)=>q.showIf&&!q.showIf(data)?-1:i).filter(i=>i>=0)}
+function show(id){document.querySelectorAll('main>section').forEach(s=>s.classList.add('hidden'));$(id).classList.remove('hidden');window.scrollTo(0,0)}
+function createChoice(q,opt,idx){const label=document.createElement('label');label.className='choice';const input=document.createElement('input');input.type=q.type==='multi'?'checkbox':'radio';input.name='choice';input.value=opt;input.checked=q.type==='multi'?(data[q.id]||[]).includes(opt):data[q.id]===opt;input.addEventListener('change',()=>{if(q.type==='multi'){const checked=[...$('field').querySelectorAll('input[type=checkbox]:checked')];if(checked.length>q.max){input.checked=false;$('error').textContent=`Choose up to ${q.max} skills.`;return}data[q.id]=checked.map(c=>c.value)}else{data[q.id]=opt}if(opt!=='Other'&&q.type==='single')delete data[q.id+'Other'];$('error').textContent='';refreshChoiceStyles();toggleOther(q)});const text=document.createElement('span');text.textContent=opt;label.append(input,text);return label}
+function refreshChoiceStyles(){$('field').querySelectorAll('.choice').forEach(l=>l.classList.toggle('selected',l.querySelector('input').checked))}
+function toggleOther(q){const selected=q.type==='multi'?(data[q.id]||[]).includes('Other'):data[q.id]==='Other';let box=$('otherWrap');if(!box)return;box.classList.toggle('hidden',!selected);const inp=$('otherAnswer');inp.required=selected;inp.value=data[q.id+'Other']||''}
+function render(){const visible=visibleIndices();if(!visible.includes(step))step=visible[Math.min(visible.length-1,0)];const pos=visible.indexOf(step),q=qs[step];$('stepTitle').textContent=`Question ${pos+1} of ${visible.length}`;$('sectionLabel').textContent=q.section;$('bar').style.width=`${(pos+1)/visible.length*100}%`;$('progress').setAttribute('aria-valuenow',String(Math.round((pos+1)/visible.length*100)));$('question').textContent=q.q;$('hint').textContent=q.type==='multi'?`Choose up to ${q.max} options. Select Other to specify a skill.`:q.required?'Select or enter one answer.':'Optional — you can skip this question.';$('backBtn').disabled=pos===0&&!fromReview;$('nextBtn').textContent=fromReview?'Save and review →':pos===visible.length-1?'Review profile →':'Continue →';$('error').textContent='';const f=$('field');f.replaceChildren();if(q.type==='single'||q.type==='multi'){const grid=document.createElement('div');grid.className='choice-grid';q.options.forEach((opt,i)=>grid.appendChild(createChoice(q,opt,i)));f.appendChild(grid);if(q.options.includes('Other')){const wrap=document.createElement('div');wrap.id='otherWrap';wrap.className='freeform';const label=document.createElement('label');label.htmlFor='otherAnswer';label.textContent='Please specify';const inp=document.createElement('input');inp.id='otherAnswer';inp.placeholder=q.type==='multi'?'Enter your additional skill':'Enter your answer';inp.value=data[q.id+'Other']||'';inp.addEventListener('input',()=>{data[q.id+'Other']=inp.value});wrap.append(label,inp);f.appendChild(wrap);toggleOther(q)}}else{const inp=document.createElement('input');inp.id='answer';inp.type='text';inp.maxLength=300;inp.placeholder=q.placeholder||'';inp.value=data[q.id]||'';inp.addEventListener('input',()=>{data[q.id]=inp.value});f.appendChild(inp)}refreshChoiceStyles()}
+function save(ev){ev.preventDefault();const q=qs[step];if(q.type==='text')data[q.id]=($('answer').value||'').trim();if(q.required&&(!data[q.id]||(Array.isArray(data[q.id])&&!data[q.id].length))){$('error').textContent='Please answer this question to continue.';return}const wantsOther=q.type==='multi'?(data[q.id]||[]).includes('Other'):data[q.id]==='Other';if(wantsOther&&!(data[q.id+'Other']||'').trim()){$('error').textContent='Please specify your answer.';$('otherAnswer').focus();return}if(fromReview){fromReview=false;renderReview();show('review');return}const visible=visibleIndices(),pos=visible.indexOf(step);if(pos<visible.length-1){step=visible[pos+1];render();window.scrollTo(0,0)}else{renderReview();show('review')}}
+function back(){if(fromReview){fromReview=false;renderReview();show('review');return}const visible=visibleIndices(),pos=visible.indexOf(step);if(pos>0){step=visible[pos-1];render();window.scrollTo(0,0)}}
+function formatValue(q){const val=data[q.id];if(!val||(Array.isArray(val)&&!val.length))return 'Not provided';if(Array.isArray(val))return val.map(v=>v==='Other'?data[q.id+'Other']||'Other':v).join(', ');return val==='Other'?data[q.id+'Other']||'Other':val}
+function renderReview(){const parent=$('answers');parent.replaceChildren();let last='';qs.forEach((q,i)=>{if(q.showIf&&!q.showIf(data))return;if(q.section!==last){const h=document.createElement('h3');h.className='sectionhead';h.textContent=q.section;parent.appendChild(h);last=q.section}const div=document.createElement('div');div.className='review';const content=document.createElement('div');const title=document.createElement('strong');title.textContent=q.q;const value=document.createElement('span');value.className='value';value.textContent=formatValue(q);content.append(title,value);const edit=document.createElement('button');edit.type='button';edit.className='linkbtn';edit.textContent='Edit';edit.addEventListener('click',()=>{step=i;fromReview=true;render();show('profile')});div.append(content,edit);parent.appendChild(div)})}
+// The offline preview asks one thing at a time. A quantified-impact follow-up
+// appears only when the user indicates they have a number to share.
+function interviewQuestions(){
+ const goal=data.careerObjective==='Other'?(data.careerObjectiveOther||'your career goal'):(data.careerObjective||'your career goal');
+ const skills=(data.skills||[]).map(s=>s==='Other'?(data.skillsOther||'Other'):s);
+ const skillOptions=[...new Set([...skills,'Leadership','Communication','Problem-solving','Technical expertise','Planning / organisation','Other'])].slice(0,10);
+ const leadership=['Get promoted','Transition into leadership'].includes(data.careerObjective);
+ const change=['Move into a different function','Move into a different industry','Return to work after a break'].includes(data.careerObjective);
+ return [
+  {id:'experienceType',category:'Your experience',q:leadership?'Which experience shows your readiness for a bigger role?':change?'Which experience could help you move into your new career direction?':'Which professional achievement best represents your strengths?',type:'single',options:['Led a team or influenced others','Delivered a successful project','Improved a process','Solved a difficult problem','Increased revenue or reduced costs','Helped a customer or stakeholder','Learned and applied a new skill','Other'],required:true},
+  {id:'personalContribution',category:'Your experience',q:'What did you personally do?',hint:'Write 1–3 sentences about that example. You can keep it brief.',type:'textarea',placeholder:'For example: I redesigned the approval process and trained the team.',required:true},
+  {id:'outcome',category:'Your impact',q:'What was the main result?',type:'single',options:['Saved time','Reduced costs','Increased revenue','Improved quality','Improved customer satisfaction','Delivered an important milestone','Improved team performance','Gained valuable experience','Not measured yet','Other'],required:true},
+  {id:'hasMeasurement',category:'Your impact',q:'Can you put a number on that result?',type:'single',options:['Yes','Not exactly, but I can estimate','No','Not applicable'],required:true},
+  {id:'impactEstimate',category:'Your impact',q:'What was the approximate result?',hint:'One figure or short statement is enough. An honest estimate is fine.',type:'text',placeholder:'For example: 15% faster, ₹5 lakh saved or 20 people trained',required:true,showIf:a=>['Yes','Not exactly, but I can estimate'].includes(a.hasMeasurement)},
+  {id:'skillUsed',category:'Your strengths',q:'Which skill helped you most in this example?',type:'single',options:skillOptions,required:true},
+  {id:'barrier',category:'Your career goal',q:`What is your biggest obstacle to ${goal.toLowerCase()}?`,type:'single',options:['Lack of relevant experience','Need to develop a specific skill','Need a qualification / certification','Limited opportunities in my current organisation','Finding suitable job openings','Building confidence','Building professional connections','Not sure which direction to take','No major obstacle','Other'],required:true},
+  {id:'actionTaken',category:'Your career goal',q:'What have you done so far to address it?',type:'single',options:['Completed training or a certification','Started learning a new skill','Taken on additional responsibilities','Applied for roles','Updated my CV / LinkedIn profile','Sought mentoring or feedback','Built professional connections','Made a career plan','Nothing yet','Other'],required:true},
+  {id:'rolePriority',category:'Your preferences',q:'What matters most in your next role?',type:'single',options:['Higher compensation','Greater responsibility','Learning and development','Work-life balance','Job security','Meaningful or interesting work','Flexibility / location','Opportunity to lead people','Other'],required:true},
+  {id:'supportNeeded',category:'Next steps',q:'What kind of career support would help you most?',type:'single',options:['Identify suitable career paths','Understand my strengths and gaps','Build relevant skills','Improve my CV / LinkedIn profile','Prepare for interviews','Create a job search plan','Plan a promotion','Build confidence / professional network','Other'],required:true}
+ ];
+}
+function visibleInterview(){return interviewQuestions().filter(q=>!q.showIf||q.showIf(interviewAnswers))}
+function effectiveInterviewValue(q){let v=interviewAnswers[q.id];return v==='Other'?(interviewAnswers[q.id+'Other']||'Other'):v||''}
+function startInterview(){interviewStep=0;renderInterview();show('interview')}
+function renderInterview(){
+ const list=visibleInterview();if(interviewStep>=list.length)interviewStep=list.length-1;
+ const q=list[interviewStep];
+ $('interviewTitle').textContent=`Question ${interviewStep+1} of ${list.length}`;
+ $('interviewCategory').textContent=q.category;
+ $('interviewBar').style.width=`${(interviewStep+1)/list.length*100}%`;
+ $('interviewProgress').setAttribute('aria-valuenow',String(Math.round((interviewStep+1)/list.length*100)));
+ $('interviewQuestion').textContent=q.q;
+ $('interviewHint').textContent=q.hint||(q.type==='single'?'Select one answer.': 'A short answer is fine.');
+ $('interviewError').textContent='';
+ $('interviewNext').textContent=interviewStep===list.length-1?'Complete preview →':'Continue →';
+ const host=$('interviewField');host.replaceChildren();
+ if(q.type==='single'){
+  const grid=document.createElement('div');grid.className='choice-grid';
+  for(const opt of q.options){
+   const label=document.createElement('label');label.className='choice';
+   const radio=document.createElement('input');radio.type='radio';radio.name='interviewChoice';radio.value=opt;radio.checked=interviewAnswers[q.id]===opt;
+   radio.addEventListener('change',()=>{interviewAnswers[q.id]=opt;if(opt!=='Other')delete interviewAnswers[q.id+'Other'];$('interviewError').textContent='';host.querySelectorAll('.choice').forEach(c=>c.classList.toggle('selected',c.querySelector('input').checked));other.classList.toggle('hidden',opt!=='Other')});
+   const span=document.createElement('span');span.textContent=opt;label.append(radio,span);label.classList.toggle('selected',radio.checked);grid.appendChild(label);
+  }
+  host.appendChild(grid);
+  const other=document.createElement('div');other.className='freeform';other.classList.toggle('hidden',interviewAnswers[q.id]!=='Other');
+  const lbl=document.createElement('label');lbl.htmlFor='interviewOther';lbl.textContent='Please specify';
+  const inp=document.createElement('input');inp.id='interviewOther';inp.placeholder='Your answer';inp.maxLength=220;inp.value=interviewAnswers[q.id+'Other']||'';
+  inp.addEventListener('input',()=>interviewAnswers[q.id+'Other']=inp.value);
+  other.append(lbl,inp);host.appendChild(other);
+ }else{
+  const input=document.createElement(q.type==='textarea'?'textarea':'input');
+  input.id='interviewText';if(q.type==='text')input.type='text';input.maxLength=q.type==='textarea'?750:220;
+  input.placeholder=q.placeholder||'';input.value=interviewAnswers[q.id]||'';
+  input.addEventListener('input',()=>interviewAnswers[q.id]=input.value);
+  host.appendChild(input);
+ }
+}
+function nextInterview(){
+ const q=visibleInterview()[interviewStep];const value=interviewAnswers[q.id];
+ if(q.required&&(!value||!String(value).trim())){$('interviewError').textContent='Please answer this question to continue.';return}
+ if(value==='Other'&&!(interviewAnswers[q.id+'Other']||'').trim()){$('interviewError').textContent='Please specify your answer.';$('interviewOther').focus();return}
+ if(interviewStep<visibleInterview().length-1){interviewStep++;renderInterview();window.scrollTo(0,0)}else show('complete')
+}
+function interviewBack(){
+ if(interviewStep>0){interviewStep--;renderInterview();window.scrollTo(0,0)}
+ else{renderReview();show('review')}
+}
+function download(){
+ const obj={version:'1.0-beta',mode:assessmentMode,createdAt:new Date().toISOString(),profile:assessmentMode==='live'?(savedServerProfile||profileForAPI()):qs.filter(q=>!q.showIf||q.showIf(data)).map(q=>({id:q.id,question:q.q,answer:formatValue(q)})),interview:assessmentMode==='live'?liveHistory.map(h=>({question:h.question,category:h.category,answer:h.answer})):visibleInterview().map(q=>({id:q.id,question:q.q,answer:effectiveInterviewValue(q)}))};
+ const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='career-professional-assessment.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
+}
+$('startBtn').addEventListener('click',()=>{show('profile');render()});$('profileForm').addEventListener('submit',save);$('backBtn').addEventListener('click',back);$('reviewBack').addEventListener('click',()=>{step=visibleIndices().at(-1);fromReview=false;render();show('profile')});$('interviewBtn').addEventListener('click',()=>{assessmentMode='demo';startInterview()});$('liveStartBtn').addEventListener('click',()=>{assessmentMode='live';$('previewCode').disabled=Boolean(liveSession);$('previewCode').placeholder=liveSession?'Existing session will be resumed':'Private code from the project owner';$('consent').checked=Boolean(liveSession);show('liveSetup')});$('interviewBack').addEventListener('click',interviewBack);$('interviewNext').addEventListener('click',nextInterview);$('downloadBtn').addEventListener('click',download);$('restartBtn').addEventListener('click',()=>location.reload());
+
+// ── LIVE PRIVATE BETA: server owns history and current question ──
+const SESSION_KEY='careerProfessionalsBetaV1';
+const liveHistory=[];
+let liveSession=null,currentLiveQuestion=null,liveBusy=false,savedServerProfile=null;
+const apiPrefix=location.pathname.startsWith('/careerprofessionals')?'/careerprofessionals/api':'/api';
+function profileForAPI(){const profile={};for(const q of qs){if(q.showIf&&!q.showIf(data))continue;if(data[q.id]!==undefined)profile[q.id]=formatValue(q)}return profile}
+function storeSession(session){liveSession=session;if(session)sessionStorage.setItem(SESSION_KEY,JSON.stringify(session));else sessionStorage.removeItem(SESSION_KEY);$('resumeBtn').classList.toggle('hidden',!session)}
+function setLiveBusy(b){liveBusy=b;for(const id of ['liveNext','liveBack','liveBegin','resumeBtn','retryNext'])$(id).disabled=b;$('liveNext').textContent=b?'Saving your answer…':'Continue →'}
+async function apiCall(route,body={},isStart=false){
+ const headers={'Content-Type':'application/json'};
+ if(!isStart){if(!liveSession)throw Error('Start a new live interview.');headers.Authorization=`Bearer ${liveSession.sessionToken}`;headers['x-session-id']=liveSession.sessionId;}
+ const response=await fetch(`${apiPrefix}/${route}`,{method:'POST',headers,body:JSON.stringify(body),cache:'no-store'});
+ let result;try{result=await response.json()}catch{throw Error('The server returned an unexpected response. Check the deployment settings.');}
+ if(!response.ok){if(response.status===401&&!isStart){storeSession(null)}throw Error(result.error||'The request could not be completed.');}
+ return result;
+}
+function updateFromServer(result){
+ liveHistory.length=0;for(const entry of(result.history||[]))liveHistory.push({...entry});
+ if(result.profile)savedServerProfile=result.profile;
+ currentLiveQuestion=result.question||null;
+ if(result.status==='complete'){show('complete');return true;}
+ if(currentLiveQuestion){renderLive();show('liveInterview');return true;}
+ return false;
+}
+async function fetchNext(){
+ $('retryNext').classList.add('hidden');$('liveNext').classList.remove('hidden');
+ const state=await apiCall('next-question');
+ if(state.done){currentLiveQuestion=null;show('complete');return;}
+ currentLiveQuestion=state.question;renderLive();show('liveInterview');
+}
+async function beginLive(){
+ const code=$('previewCode').value.trim();
+ if(!liveSession&&!code){$('liveSetupError').textContent='Enter the private preview access code.';return;}
+ if(!liveSession&&!$('consent').checked){$('liveSetupError').textContent='Please confirm that you understand how your data will be used.';return;}
+ $('liveSetupError').textContent='';setLiveBusy(true);
+ try{
+  if(!liveSession){const p=profileForAPI();const session=await apiCall('start',{previewCode:code,profile:p},true);savedServerProfile=p;storeSession(session);$('previewCode').value='';}
+  await fetchNext();
+ }catch(e){$('liveSetupError').textContent=`${e.message} ${liveSession?'Your session has been saved. Press Begin again to retry.':''}`;}
+ finally{setLiveBusy(false);}
+}
+function renderLive(restoredAnswer=''){
+ const q=currentLiveQuestion;if(!q)return;
+ $('liveTitle').textContent=`Question ${liveHistory.length+1} · up to 15`;
+ $('liveCategory').textContent=q.category;
+ const progress=Math.min(100,Math.round(liveHistory.length/15*100));$('liveBar').style.width=`${progress}%`;$('liveProgress').setAttribute('aria-valuenow',String(progress));
+ $('liveQuestion').textContent=q.text;$('liveHint').textContent=q.hint||(q.type==='text'?'A short answer is fine.':'Choose the answer that fits best.');$('liveError').textContent='';
+ $('retryNext').classList.add('hidden');$('liveNext').classList.remove('hidden');
+ const host=$('liveField');host.replaceChildren();
+ if(q.type==='single'||q.type==='multi'){
+  const multi=q.type==='multi',grid=document.createElement('div');grid.className='choice-grid';
+  const other=document.createElement('div');other.className='freeform hidden';const lbl=document.createElement('label');lbl.htmlFor='liveOther';lbl.textContent='Please specify';const inp=document.createElement('input');inp.id='liveOther';inp.maxLength=220;inp.placeholder='Your answer';other.append(lbl,inp);
+  for(const opt of q.options){
+   const label=document.createElement('label');label.className='choice';const input=document.createElement('input');input.type=multi?'checkbox':'radio';input.name='liveChoice';input.value=opt;
+   const span=document.createElement('span');span.textContent=opt;label.append(input,span);grid.appendChild(label);
+   input.addEventListener('change',()=>{
+    if(multi){const selected=[...grid.querySelectorAll('input:checked')];if(selected.length>3){input.checked=false;$('liveError').textContent='Choose up to three options.'}else $('liveError').textContent=''}else $('liveError').textContent='';
+    grid.querySelectorAll('.choice').forEach(el=>el.classList.toggle('selected',el.querySelector('input').checked));
+    other.classList.toggle('hidden',![...grid.querySelectorAll('input:checked')].some(el=>el.value==='Other'));
+   });
+  }
+  host.append(grid,other);
+  if(restoredAnswer){const choices=multi?restoredAnswer.split('; '):[restoredAnswer];for(const input of grid.querySelectorAll('input')){
+    const match=choices.find(a=>a===input.value||(input.value==='Other'&&a.startsWith('Other: ')));
+    if(match){input.checked=true;input.closest('.choice').classList.add('selected');if(input.value==='Other'){inp.value=match.slice(7);other.classList.remove('hidden')}}
+  }}
+ }else{const input=document.createElement('textarea');input.id='liveText';input.maxLength=800;input.placeholder='One or two sentences are enough.';input.value=restoredAnswer;host.appendChild(input)}
+}
+function readLiveAnswer(){
+ const q=currentLiveQuestion,host=$('liveField');
+ if(q.type==='text'){const v=(host.querySelector('textarea')?.value||'').trim();if(!v)throw Error('Please answer this question.');return v;}
+ const checked=[...host.querySelectorAll('input[name=liveChoice]:checked')].map(el=>el.value);
+ if(!checked.length)throw Error('Please select an answer.');
+ const other=host.querySelector('#liveOther')?.value.trim()||'';
+ if(checked.includes('Other')&&!other)throw Error('Please specify your answer.');
+ if(q.type==='multi'&&other.includes(';'))throw Error('Please use commas instead of semicolons in your Other answer.');
+ const resolved=checked.map(x=>x==='Other'?`Other: ${other}`:x);
+ return q.type==='multi'?resolved.join('; '):resolved[0];
+}
+async function submitLive(){
+ if(liveBusy||!currentLiveQuestion)return;
+ let answer;try{answer=readLiveAnswer()}catch(e){$('liveError').textContent=e.message;return;}
+ setLiveBusy(true);$('liveError').textContent='';
+ try{
+  const old=currentLiveQuestion;
+  await apiCall('submit-answer',{questionId:old.id,answer});
+  liveHistory.push({question:old.text,category:old.category,answer});currentLiveQuestion=null;
+  try{await fetchNext();}catch(e){$('liveError').textContent=`Your answer was saved. ${e.message}`;$('liveNext').classList.add('hidden');$('retryNext').classList.remove('hidden');}
+ }catch(e){$('liveError').textContent=`${e.message} Your answer is still on this screen; please retry.`;}
+ finally{setLiveBusy(false);}
+}
+async function backLive(){
+ if(liveBusy)return;
+ if(!liveHistory.length){show('liveSetup');return;}
+ setLiveBusy(true);$('liveError').textContent='';
+ try{
+  const state=await apiCall('back');liveHistory.pop();currentLiveQuestion=state.question;renderLive(state.answer);
+ }catch(e){$('liveError').textContent=e.message;}
+ finally{setLiveBusy(false);}
+}
+async function resumeLive(){
+ if(!liveSession)return;
+ $('resumeError').textContent='';setLiveBusy(true);
+ try{
+  const state=await apiCall('resume');
+  if(updateFromServer(state))return;
+  await fetchNext();
+ }catch(e){$('resumeError').textContent=e.message;}
+ finally{setLiveBusy(false);}
+}
+async function retryNext(){
+ if(liveBusy)return;
+ setLiveBusy(true);$('liveError').textContent='';
+ try{await fetchNext();}
+ catch(e){$('liveError').textContent=e.message;$('retryNext').classList.remove('hidden');$('liveNext').classList.add('hidden');}
+ finally{setLiveBusy(false);}
+}
+async function deleteMySession(){
+ if(!liveSession){location.reload();return;}
+ if(!confirm('Permanently delete this test assessment and all its saved answers?'))return;
+ $('deleteError').textContent='';$('deleteSessionBtn').disabled=true;
+ try{await apiCall('delete-session');storeSession(null);savedServerProfile=null;liveHistory.length=0;location.reload();}
+ catch(e){$('deleteError').textContent=e.message;$('deleteSessionBtn').disabled=false;}
+}
+$('liveSetupBack').addEventListener('click',()=>{renderReview();show('review')});
+$('liveBegin').addEventListener('click',beginLive);
+$('liveNext').addEventListener('click',submitLive);
+$('liveBack').addEventListener('click',backLive);
+$('retryNext').addEventListener('click',retryNext);
+$('resumeBtn').addEventListener('click',resumeLive);
+$('deleteSessionBtn').addEventListener('click',deleteMySession);
+try{const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null');if(s&&s.sessionId&&s.sessionToken)storeSession(s)}catch{sessionStorage.removeItem(SESSION_KEY)}
+</script>
+</body></html>

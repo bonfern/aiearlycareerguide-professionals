@@ -1,0 +1,10 @@
+{
+  "name": "aiearlycareerguide-career-professionals",
+  "version": "1.0.0-beta.1",
+  "private": true,
+  "type": "module",
+  "scripts": {"dev":"vercel dev", "test":"node --test tests/*.test.js"},
+  "engines": {"node": ">=20"},
+  "dependencies": {"firebase-admin": "^13.0.0"},
+  "devDependencies": {"vercel": "^48.0.0"}
+}
