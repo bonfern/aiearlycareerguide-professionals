@@ -51,3 +51,14 @@ test('HTML script parses and no private keys are embedded',async()=>{
  assert.ok(!html.includes('sk-proj-'));assert.ok(!html.includes('FIREBASE_SERVICE_ACCOUNT_BASE64'));
  assert.match(html,/Delete my test session/);
 });
+
+test('Firebase credentials accept full JSON directly or legacy Base64',async()=>{
+ const {firebaseConfigured,loadFirebaseServiceAccount}=await import('../api/_lib/firebase-config.js');
+ const account={project_id:'test-professional-project',client_email:'test@example.com',private_key:'-----BEGIN PRIVATE KEY-----\nTEST\n-----END PRIVATE KEY-----\n'};
+ const raw=JSON.stringify(account);
+ assert.equal(firebaseConfigured({FIREBASE_SERVICE_ACCOUNT_JSON:raw}),true);
+ assert.deepEqual(loadFirebaseServiceAccount({FIREBASE_SERVICE_ACCOUNT_JSON:raw}),account);
+ assert.deepEqual(loadFirebaseServiceAccount({FIREBASE_SERVICE_ACCOUNT_BASE64:Buffer.from(raw).toString('base64')}),account);
+ assert.throws(()=>loadFirebaseServiceAccount({FIREBASE_SERVICE_ACCOUNT_JSON:'not-json'}),/could not be parsed/);
+ assert.equal(firebaseConfigured({}),false);
+});

@@ -19,17 +19,9 @@ Create a private GitHub repository, e.g. `aiearlycareerguide-professionals`. Upl
 
 ## Step 2 — Firebase setup
 
-For the first private beta you may use the **existing Firebase project**, but keep the `professionalAssessments_v1` and `professionalBetaDaily_v1` collections separate. A separate Firebase project is preferable before a public launch. Ensure Firestore is enabled and your existing security rules continue to restrict public clients; **do not overwrite the student site's rules**.
+Use your **new separate Firebase project** for Career Professionals. Enable Firestore in production mode. The application automatically creates `professionalAssessments_v1` and `professionalBetaDaily_v1`. Keep the student project unchanged.
 
-From Firebase Console → Project Settings → Service Accounts → Generate new private key, securely obtain the service-account JSON for the selected project. Base64-encode its raw bytes **locally** (do not paste the JSON, base64 or private keys into ChatGPT, GitHub, client HTML or screenshots):
-
-Windows PowerShell:
-
-```powershell
-[Convert]::ToBase64String([System.IO.File]::ReadAllBytes("C:\\path\\to\\service-account.json"))
-```
-
-Copy the resulting base64 string directly into the `FIREBASE_SERVICE_ACCOUNT_BASE64` Vercel environment variable. After confirming the Vercel secret is saved, securely delete unneeded plaintext copies. Ideally create a **dedicated service account** limited to the professional collections before public release; Firebase Admin credentials have broad database access.
+From Firebase Console → Project Settings → Service Accounts → Generate new private key, download your service-account JSON securely. In Vercel, add an environment variable named **`FIREBASE_SERVICE_ACCOUNT_JSON`** and paste the **entire file contents** (including the opening and closing braces) as its value. This is server-side only. **Never upload the JSON key to GitHub, paste it into a public encoder, or share it in chat or screenshots.** The previous `FIREBASE_SERVICE_ACCOUNT_BASE64` method remains supported as an alternative; configure **one or the other**, not both.
 
 **Data retention:** By default Firestore does not automatically purge records. For a 30-day preview retention period, enable Firestore TTL in your project for collection group `professionalAssessments_v1` using the `retainUntil` timestamp field, and for `professionalBetaDaily_v1` using the same field. Verify TTL operation in Firebase Console. TTL deletion is asynchronous, not guaranteed at the exact expiry time. Each tester can also delete their current session in-app after completion. Access expires after 7 days regardless of TTL.
 
@@ -44,7 +36,7 @@ Copy the resulting base64 string directly into the `FIREBASE_SERVICE_ACCOUNT_BAS
 | `OPENAI_API_KEY` | Your private key from an OpenAI project with budget controls |
 | `OPENAI_MODEL` | `gpt-4o-mini` (or a compatible structured-output model) |
 | `PREVIEW_ACCESS_CODE` | A unique 32+-character code shared only with testers, **not** your OpenAI key |
-| `FIREBASE_SERVICE_ACCOUNT_BASE64` | Base64-encoded Firebase service-account JSON from Step 2 |
+| `FIREBASE_SERVICE_ACCOUNT_JSON` | Paste the entire downloaded Firebase service-account JSON file contents from Step 2 |
 
 4. Deploy. Open `https://<your-vercel-project>.vercel.app/api/health`; `ready` should be `true`. It never reveals your secrets.
 5. Open your new Vercel URL, complete the professional profile, select **Start live AI interview**, enter the private code and accept the data-use notice. Answer a few questions, refresh and use **Resume my saved interview**.

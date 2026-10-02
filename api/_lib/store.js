@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import admin from 'firebase-admin';
 import {ApiError,sha,safeEqual,validateAnswer} from './security.js';
+import {loadFirebaseServiceAccount} from './firebase-config.js';
 export {ApiError,sha,safeEqual,validateAnswer};
 
 export const COLLECTION = 'professionalAssessments_v1';
@@ -10,9 +11,10 @@ const RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
 
 export function db() {
   if (!admin.apps.length) {
-    const encoded = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
-    if (!encoded) throw new ApiError(503, 'Assessment database is not configured.');
-    const account = JSON.parse(Buffer.from(encoded, 'base64').toString('utf8'));
+    if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON && !process.env.FIREBASE_SERVICE_ACCOUNT_BASE64) {
+      throw new ApiError(503, 'Assessment database is not configured.');
+    }
+    const account = loadFirebaseServiceAccount();
     admin.initializeApp({ credential: admin.credential.cert(account) });
   }
   return admin.firestore();
