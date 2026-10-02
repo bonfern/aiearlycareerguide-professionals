@@ -4,7 +4,7 @@ import {validatePayload} from './_lib/interview-logic.js';
 export default async function handler(req,res){
   if(!postOnly(req,res))return;
   try{
-    if(!process.env.OPENAI_API_KEY || !process.env.PREVIEW_ACCESS_CODE || !process.env.FIREBASE_SERVICE_ACCOUNT_BASE64)
+    if(!process.env.OPENAI_API_KEY || !process.env.PREVIEW_ACCESS_CODE || !(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || process.env.FIREBASE_SERVICE_ACCOUNT_BASE64))
       throw new ApiError(503,'This preview is not configured yet.');
     const raw=parseBody(req);
     if(!previewAuthorized(raw.previewCode)) throw new ApiError(401,'Incorrect preview access code.');
