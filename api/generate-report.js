@@ -14,8 +14,11 @@ export default async function handler(req,res){
     const state=await db().runTransaction(async tx=>{
       const snap=await tx.get(ref),s=snap.data();
       if(!s)throw new ApiError(401,'Assessment session not found.');
-      if(s.status!=='complete'||!s.blueprint?.length||competencyProgress(s.blueprint,s.history||[]).total===0)throw new ApiError(409,'Finish your role-specific skill assessment before generating a report.');
       if(s.report)return {kind:'cached',report:s.report,generatedAt:s.reportGeneratedAt?.toDate?.()?.toISOString?.()||null,paid:Boolean(s.paid)};
+      const coverage=competencyProgress(s.blueprint||[],s.history||[]);
+      if(s.status!=='complete'||coverage.total===0||coverage.assessed!==coverage.total||
+         coverage.skills.some(skill=>skill.answered<3))
+       throw new ApiError(409,'Complete all three questions for every essential skill before generating your report.');
       if(s.reportCallsUsed>=2)throw new ApiError(429,'Report generation limit reached for this preview session.');
       if(s.reportLease?.until>Date.now())throw new ApiError(409,'Your report is already being generated. Please wait and try again.');
       leaseId=crypto.randomUUID();

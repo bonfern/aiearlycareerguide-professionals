@@ -1,6 +1,6 @@
 // V4: Role-specific, evidence-led competency assessment.
 // Profile and interview responses are untrusted data, never instructions.
-export const MAX_QUESTIONS=24; // 4–7 essential skills, 2–3 questions each; safety ceiling.
+export const MAX_QUESTIONS=24; // 4–7 essential skills, exactly 3 questions each; safety ceiling.
 export const MIN_QUESTIONS=0;  // Completion depends on evidence coverage, not a fixed minimum.
 const PROFILE_KEYS=[
  'profileGroup','employmentStatus','currentJobTitle','currentIndustry','currentFunction','businessStage','businessFocus',
@@ -54,30 +54,42 @@ export function validateBlueprint(blueprint){
  if(technical<2||behavioural<1)throw Error('Assess both technical and behavioural skills.');
  return result;
 }
+// Grade only server-saved private question configurations, never client-supplied keys.
+// Older sessions may lack explicit grading fields but retain questionConfig.
+export function scoredHistory(history=[]){
+ return (history||[]).map(entry=>{
+  if(typeof entry.correct==='boolean'&&entry.competencyId)return entry;
+  const q=entry.questionConfig;
+  if(!q||!Number.isInteger(q.answerKey)||!Array.isArray(q.options)||
+     q.answerKey<0||q.answerKey>=q.options.length||typeof entry.answer!=='string')return entry;
+  return {...entry,competencyId:q.competencyId,questionType:q.questionType,
+   subskill:q.subskill,difficulty:q.difficulty,correct:entry.answer===q.options[q.answerKey],
+   expectedAnswer:q.options[q.answerKey],rationale:q.rationale};
+ });
+}
 export function competencyProgress(blueprint=[],history=[]){
+ const scored=scoredHistory(history);
  const skills=(blueprint||[]).map(c=>{
-  const relevant=history.filter(h=>h.competencyId===c.id && typeof h.correct==='boolean');
+  const relevant=scored.filter(h=>h.competencyId===c.id && typeof h.correct==='boolean');
   const correct=relevant.filter(h=>h.correct).length;
   const hasScenario=relevant.some(h=>h.questionType==='scenario');
-  // One knowledge or conceptual question AND one applied scenario, unless all
-  // assessment items are behavioural scenarios. A mixed result requires a probe.
   const hasKnowledge=c.type==='behavioural'||relevant.some(h=>h.questionType==='knowledge');
-  const resolved=relevant.length>=2&&hasScenario&&hasKnowledge&&(relevant.length>=3||correct===0||correct===relevant.length);
+  // Every essential skill requires all three prepared questions, irrespective of correctness.
+  const resolved=relevant.length>=3&&hasScenario&&hasKnowledge;
   return {id:c.id,name:c.name,type:c.type,importance:c.importance,answered:relevant.length,correct,hasScenario,hasKnowledge,resolved};
  });
  return {skills,assessed:skills.filter(s=>s.resolved).length,total:skills.length};
 }
-// Early exit is explicitly an incomplete assessment, never equivalent to full coverage.
-// Permit this only after enough real answers exist to produce some actionable findings.
+// No early report: retain the shape for legacy consumers but never grant eligibility.
 export function earlyFinishEligibility(blueprint=[],history=[]){
  const progress=competencyProgress(blueprint,history);
  const sampled=progress.skills.filter(s=>s.answered>0).length;
- const answered=history.filter(h=>typeof h.correct==='boolean').length;
- return {eligible:blueprint.length>=4&&answered>=6&&sampled>=3,answered,sampled,total:progress.total,fullyAssessed:progress.assessed};
+ const answered=scoredHistory(history).filter(h=>typeof h.correct==='boolean').length;
+ return {eligible:false,answered,sampled,total:progress.total,fullyAssessed:progress.assessed};
 }
 export function nextCompetency(blueprint,history){
  const progress=competencyProgress(blueprint,history);
- if(history.length>=MAX_QUESTIONS)return null;
+ if(scoredHistory(history).filter(h=>typeof h.correct==='boolean').length>=MAX_QUESTIONS)return null;
  const pending=progress.skills.filter(s=>!s.resolved);
  // Finish each skill's evidence before moving to the next skill; the model is
  // instructed to adjust difficulty and test a different facet of this skill.

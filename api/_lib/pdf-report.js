@@ -32,7 +32,7 @@ export function buildReportPdf(report){
  for(const s of report.skillAssessments||[]){
   heading(s.name);
   line('Required for your goal: '+s.targetBenchmark);
-  line('Current test-based finding: '+s.currentCompetency+'; Evidence: '+(s.evidenceLevel||'Limited'));
+  line('Current test-based finding: '+s.currentCompetency);
   line('Development priority: '+(s.priority||'Review'));
   line('Specific focus: '+s.gap);
   if(s.subskillsNeedingWork?.length)line('Subskills to practise: '+s.subskillsNeedingWork.join('; '));

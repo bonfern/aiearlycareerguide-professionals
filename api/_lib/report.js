@@ -1,5 +1,5 @@
 import {ApiError} from './security.js';
-import {competencyProgress} from './interview-logic.js';
+import {competencyProgress,scoredHistory} from './interview-logic.js';
 import {recommendationsForSkill,validateLearningPreferences,CATALOG_VERSION} from './learning-catalog.js';
 
 const item=(properties,required)=>({type:'object',additionalProperties:false,required,properties});
@@ -30,20 +30,19 @@ export function validateReport(report,blueprint=[],history=[],untestedSkills=[],
   const raw=report.skillAssessments.find(r=>r.id===skill.id),record=progress.skills.find(r=>r.id===skill.id);
   if(!raw||raw.name!==skill.name)throw Error('Incomplete or mismatched skill assessment.');
   const targetBenchmark=str(skill.benchmark,500);const gap=str(raw.gap,700);
-  const selected=history.filter(h=>h.competencyId===skill.id&&typeof h.correct==='boolean');
+  const selected=scoredHistory(history).filter(h=>h.competencyId===skill.id&&typeof h.correct==='boolean');
   const testedSubskills=[...new Set(selected.map(h=>h.subskill).filter(Boolean))];
   const missingSubskills=(skill.subskills||[]).filter(sub=>!testedSubskills.some(t=>t.toLowerCase()===sub.toLowerCase()));
   const needsWork=[...new Set(selected.filter(h=>!h.correct).map(h=>h.subskill).filter(Boolean))];
   const currentCompetency=label(record);
   const priority=!record.answered?'Not assessed':!record.resolved?'More assessment needed':record.correct===record.answered?'Maintain and stretch':record.correct===0?'High development priority':'Development priority';
-  const evidenceConfidence=!record.resolved?'Insufficient':record.answered<3?'Limited — two or fewer questions':'Limited — short scenario test';
   const learning=recommendationsForSkill({name:skill.name,benchmark:skill.benchmark,gap,careerStage:raw.careerStage},preferences);
   const practiceTask=str(raw.practiceTask,500),successIndicator=str(raw.successIndicator,400);
   if(!gap||!practiceTask||!successIndicator||!Array.isArray(raw.actions)||raw.actions.length<2||raw.actions.length>3)throw Error('Skill needs a specific gap, 2–3 actions and a measurable task.');
   const actions=raw.actions.map(x=>str(x,430));if(actions.some(x=>!x))throw Error('Incomplete skill action.');
   // A brief unproctored test does not justify a high-confidence workplace skill claim.
   return {id:skill.id,name:skill.name,type:skill.type,importance:'essential',targetBenchmark,
-   currentCompetency,evidenceLevel:evidenceConfidence,priority,tested:record.answered,correct:record.correct,
+   currentCompetency,priority,tested:record.answered,correct:record.correct,
    testedSubskills,subskillsNeedingWork:needsWork,subskillsNotTested:missingSubskills,
    gap:record.answered?gap:'Not assessed — there is no basis to infer a gap or strength.',
    actions,practiceTask,successIndicator,learning};
@@ -71,7 +70,7 @@ export async function generateReport(profile,history,blueprint=[],untestedSkills
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),145000);
  const progress=competencyProgress(blueprint,history);
  const findings=blueprint.map(skill=>{
-  const selected=history.filter(h=>h.competencyId===skill.id),record=progress.skills.find(s=>s.id===skill.id);
+  const selected=scoredHistory(history).filter(h=>h.competencyId===skill.id),record=progress.skills.find(s=>s.id===skill.id);
   return {skillId:skill.id,skill:skill.name,roleExpectation:skill.benchmark,numberTested:record.answered,
    correct:record.correct,assessed:record.resolved,currentCompetency:label(record),
    topicsNeedingWork:selected.filter(h=>!h.correct).map(h=>({subskill:h.subskill,correctApproach:h.expectedAnswer,why:h.rationale})),

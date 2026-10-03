@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import {db,authorize,ApiError,output,handleError,postOnly,MAX_AI_CALLS,safeState,publicQuestion,publicProgress} from './_lib/store.js';
-import {MAX_QUESTIONS,nextCompetency} from './_lib/interview-logic.js';
+import {MAX_QUESTIONS,nextCompetency,scoredHistory,competencyProgress} from './_lib/interview-logic.js';
 import {generateQuestion,generateAssessmentBank} from './_lib/ai.js';
 import {choosePreparedQuestion} from './_lib/assessment-bank.js';
 import {getOrCreateAssessmentBank} from './_lib/question-cache.js';
@@ -13,19 +13,27 @@ export default async function handler(req,res){
    const snap=await tx.get(ref);if(!snap.exists)throw new ApiError(401,'Session no longer available.');
    const s=snap.data();
    if(s.currentQuestion)return {kind:'existing',state:safeState(s)};
-   if(s.status==='complete')return {kind:'done',answered:s.history.length,progress:publicProgress(s),completionMode:s.completionMode||'full'};
-   const target=s.blueprint?.length?nextCompetency(s.blueprint,s.history):null;
-   if((s.blueprint?.length&&!target)||s.history.length>=MAX_QUESTIONS){
+   const gradedHistory=scoredHistory(s.history||[]);
+   const completion=competencyProgress(s.blueprint||[],gradedHistory);
+   if(s.status==='complete'&&(s.report||completion.total>0&&completion.assessed===completion.total))
+    return {kind:'done',answered:gradedHistory.length,progress:publicProgress(s),completionMode:s.completionMode||'full'};
+   // Older incomplete sessions may have been marked complete by the retired early-exit path.
+   if(s.status==='complete'&&!s.report)tx.update(ref,{status:'active',completionMode:null,updatedAt:new Date()});
+   const target=s.blueprint?.length?nextCompetency(s.blueprint,gradedHistory):null;
+   if(s.blueprint?.length&&!target){
+    if(completion.assessed!==completion.total||completion.total===0)
+     throw new ApiError(409,'Your assessment is not fully complete. Please contact support to restore any missing questions.');
     const progress=publicProgress(s);
-    const completionMode=progress.total>0&&progress.assessed===progress.total?'full':'early';
-    tx.update(ref,{status:'complete',completionMode,updatedAt:new Date()});
-    return {kind:'done',answered:s.history.length,progress,completionMode};
+    tx.update(ref,{status:'complete',completionMode:'full',updatedAt:new Date()});
+    return {kind:'done',answered:gradedHistory.length,progress,completionMode:'full'};
    }
+   if(gradedHistory.length>=MAX_QUESTIONS)
+    throw new ApiError(409,'The assessment reached its safety limit before all skills were covered. Please contact support.');
    if((s.callsUsed||0)>=MAX_AI_CALLS)throw new ApiError(429,'AI request limit reached. Contact the assessment administrator.');
    // Once the question bank exists, deliver the next question from Firestore
    // without a network round-trip to OpenAI.
    if(s.questionBank?.length){
-    const prepared=choosePreparedQuestion(s.blueprint,s.questionBank,s.history,target);
+    const prepared=choosePreparedQuestion(s.blueprint,s.questionBank,gradedHistory,target);
     if(!prepared)throw new ApiError(409,'A prepared question is missing. Please contact the administrator.');
     const question={...prepared,id:crypto.randomUUID()};
     tx.update(ref,{currentQuestion:question,updatedAt:new Date()});
@@ -36,7 +44,7 @@ export default async function handler(req,res){
    if(lease&&lease.until>now)throw new ApiError(409,'A question is being generated. Retry shortly.');
    leaseId=crypto.randomUUID();
    tx.update(ref,{generationLease:{id:leaseId,until:now+140000},callsUsed:(s.callsUsed||0)+1,updatedAt:new Date()});
-   return {kind:'generate',profile:s.profile,history:s.history,blueprint:s.blueprint||null,target};
+   return {kind:'generate',profile:s.profile,history:gradedHistory,blueprint:s.blueprint||null,target};
   });
   if(result.kind==='existing')return output(res,200,{done:false,...result.state});
   if(result.kind==='done')return output(res,200,{done:true,status:'complete',answered:result.answered,progress:result.progress,completionMode:result.completionMode});
