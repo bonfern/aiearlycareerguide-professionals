@@ -24,9 +24,9 @@ export const sessionRef = id => {
   if (typeof id !== 'string' || !/^[a-f0-9]{32}$/.test(id)) throw new ApiError(400, 'Invalid session identifier.');
   return db().collection(COLLECTION).doc(id);
 };
-export function newSession() {
+export function newSession(accessDays=7) {
   const token = crypto.randomBytes(32).toString('hex');
-  return { id: crypto.randomBytes(16).toString('hex'), token, tokenHash: sha(token), accessExpiresAt: new Date(Date.now() + ACCESS_MS), retainUntil: new Date(Date.now() + RETAIN_MS) };
+  return { id: crypto.randomBytes(16).toString('hex'), token, tokenHash: sha(token), accessExpiresAt: new Date(Date.now() + accessDays*24*60*60*1000), retainUntil: new Date(Date.now() + (accessDays===7?30:90)*24*60*60*1000) };
 }
 export function previewAuthorized(code) {
   return Boolean(process.env.PREVIEW_ACCESS_CODE && safeEqual(code, process.env.PREVIEW_ACCESS_CODE));
@@ -40,7 +40,7 @@ export async function authorize(req) {
   const snap = await ref.get();
   if (!snap.exists || !safeEqual(snap.data().tokenHash,sha(token))) throw new ApiError(401, 'Session not found. Please start a new interview.');
   const session = snap.data();
-  if (session.accessExpiresAt?.toMillis?.() < Date.now()) throw new ApiError(401,'This preview session has expired. Please start again.');
+  if (session.accessExpiresAt?.toMillis?.() < Date.now()) throw new ApiError(401,'This assessment session has expired. Please start again.');
   return {ref,session};
 }
 export function output(res,status,payload) {
@@ -79,5 +79,5 @@ export function safeState(session){
  return {status:session.status,profile:session.profile,answered:session.history?.length||0,
   history:(session.history||[]).map(({question,category,answer,competencyId,subskill,questionType})=>({question,category,answer,competencyId,subskill,questionType})),
   question:publicQuestion(session.currentQuestion),progress:publicProgress(session),
-  completionMode:session.completionMode||'full',accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null};
+  paid:Boolean(session.paid),completionMode:session.completionMode||'full',accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null};
 }

@@ -11,17 +11,25 @@
 </style>
 </head>
 <body>
-<header>AI EARLY CAREER GUIDE <small>Career Professionals · Private beta V7</small></header>
+<header>AI EARLY CAREER GUIDE <small>Career Professionals · Paid checkout beta V8</small></header>
 <main>
-<section id="welcome" class="panel"><div class="eyebrow">Your next career chapter</div><h1>Discover your professional direction</h1><p>Build a detailed professional profile, then complete a role-specific assessment of technical and behavioural skills with realistic multiple-choice scenarios.</p><div class="cards"><div class="card"><strong>Detailed professional profile</strong><p>Questions tailored to your career stage, with choices wherever possible.</p></div><div class="card"><strong>Adaptive interview</strong><p>Answer technical and behavioural scenarios tailored to your target role. We assess each indispensable skill and ask a third question only where evidence is mixed.</p></div><div class="card"><strong>Career roadmap</strong><p>Generate a personalised report after your live AI interview.</p></div></div><div class="notice">The previous offline preview is retired for this competency-assessment beta. In the live beta, your profile and answers are saved securely in Firestore and sent to OpenAI for question generation. Only use information you are comfortable sharing in this private test. Report generation is available to private beta testers after the live interview. Payment and email delivery are not yet available.</div><button id="startBtn" class="btn" type="button">Start professional profile →</button><button id="resumeBtn" class="btn secondary hidden" type="button">Resume my saved interview →</button><div id="previousSessions" class="notice hidden"><strong>Previous assessments in this browser tab</strong><p class="hint">Reopen an earlier assessment while its 7-day access is valid. Save important reports as PDF before closing the tab.</p><div id="previousSessionList"></div></div><div id="resumeError" class="error" aria-live="polite"></div></section>
+<section id="welcome" class="panel"><div class="eyebrow">Your next career chapter</div><h1>Discover your professional direction</h1><p>Build a detailed professional profile, then complete a role-specific assessment of technical and behavioural skills with realistic multiple-choice scenarios.</p><div class="cards"><div class="card"><strong>Detailed professional profile</strong><p>Questions tailored to your career stage, with choices wherever possible.</p></div><div class="card"><strong>Adaptive interview</strong><p>Answer technical and behavioural scenarios tailored to your target role. We assess each indispensable skill and ask a third question only where evidence is mixed.</p></div><div class="card"><strong>Career roadmap</strong><p>Generate a personalised report after your live AI interview.</p></div></div><div class="notice">The previous offline preview is retired for this competency-assessment beta. In the live beta, your profile and answers are saved securely in Firestore and sent to OpenAI for question generation. Only use information you are comfortable sharing in this private test. Use your own information only. The ₹499 paid flow and automatic report email are now available in test mode. Private preview access remains available for the project owner.</div><button id="startBtn" class="btn" type="button">Start assessment — ₹499 →</button><button id="previewEntryBtn" class="btn secondary" type="button">Private tester access</button><button id="resumeBtn" class="btn secondary hidden" type="button">Resume my saved interview →</button><div id="previousSessions" class="notice hidden"><strong>Previous assessments in this browser</strong><p class="hint">Reopen earlier assessments while their access is valid (7 days for previews, 30 days for paid assessments on this browser). Save important reports as PDFs.</p><div id="previousSessionList"></div></div><div id="resumeError" class="error" aria-live="polite"></div></section>
+<section id="checkout" class="panel hidden"><div class="eyebrow">Secure assessment access</div><h2>Start your professional assessment</h2><p>Enter your email, apply a coupon if you have one, and complete payment. No password or OTP is required. We use your email to deliver the career report.</p>
+<label for="checkoutEmail">Email address for your report</label><input type="email" id="checkoutEmail" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+<label for="couponCode">Coupon code (optional)</label><div class="row" style="align-items:flex-end"><div style="flex:1;min-width:180px"><input id="couponCode" maxlength="30" placeholder="Enter coupon code" autocomplete="off"></div><button type="button" class="btn secondary" id="applyCoupon">Apply coupon</button></div>
+<div class="notice" id="priceDetails"><strong>Assessment: ₹499</strong><p>Discount: ₹0 · Amount payable: ₹499</p></div>
+<label class="choice" for="checkoutConsent"><input type="checkbox" id="checkoutConsent"><span>I agree to my profile and answers being securely stored and processed to create my assessment, and to receive the final report by email. My email and order details will also be retained for payment support.</span></label>
+<div id="checkoutError" class="error" aria-live="polite"></div><p class="hint" id="checkoutStatus" aria-live="polite"></p>
+<button id="checkoutBack" type="button" class="btn secondary">← Back</button><button type="button" id="payBtn" class="btn">Pay ₹499 &amp; Continue →</button><button type="button" id="recoverPaymentBtn" class="btn secondary hidden">Check Previous Payment</button>
+<p class="hint">For testing, use your Razorpay test credentials. Never enter real card details in a test checkout. Keep this browser available until the assessment starts.</p></section>
 <section id="profile" class="panel hidden"><div class="eyebrow">Professional profile</div><div class="row"><h2 id="stepTitle"></h2><span id="sectionLabel" class="tag"></span></div><div class="progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><span id="bar"></span></div><form id="profileForm"><label id="question" for="answer"></label><p id="hint" class="hint"></p><div id="field"></div><div id="error" class="error" aria-live="polite"></div><div class="footeractions"><button type="button" class="btn secondary" id="backBtn">← Back</button><button type="submit" class="btn" id="nextBtn">Continue →</button></div></form></section>
 <section id="review" class="panel hidden"><div class="eyebrow">Profile review</div><h2>Your professional profile</h2><p>Review your answers. Select <strong>Edit</strong> beside any item to change it without starting again.</p><div id="answers"></div><button class="btn secondary" id="reviewBack">← Back to profile</button><button class="btn secondary hidden" id="interviewBtn">Legacy offline preview →</button><button class="btn" id="liveStartBtn">Start live AI interview →</button></section>
 <section id="interview" class="panel hidden"><div class="eyebrow">Interview preview · Preset questions, not live AI</div><div class="row"><h2 id="interviewTitle"></h2><span class="tag" id="interviewCategory"></span></div><div class="progress" role="progressbar" aria-label="Interview completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="interviewProgress"><span id="interviewBar"></span></div><h3 id="interviewQuestion"></h3><p id="interviewHint" class="hint"></p><div id="interviewField"></div><div id="interviewError" class="error" aria-live="polite"></div><p class="hint">Offline preview: preset questions to try the format. The live interview adapts to your career stage and answers.</p><div class="footeractions"><button class="btn secondary" id="interviewBack" type="button">← Back</button><button class="btn" id="interviewNext" type="button">Continue →</button></div></section>
 <section id="liveSetup" class="panel hidden"><div class="eyebrow">Secure development preview</div><h2>Live adaptive AI interview</h2><p>We assess the most indispensable technical and behavioural skills for your target role. Two short multiple-choice questions are prepared for each skill, with a third only when the answers are mixed. This is a development preview, not the paid assessment.</p><div class="notice">Private beta: your answers are stored in Firebase for this test and shared with OpenAI to generate questions. Your preview access expires after 7 days. Records remain until deleted by you or removed by the administrator; the optional 30-day Firestore deletion rule must be enabled separately. Please avoid uploading confidential employer information.</div><label for="previewCode">Private preview access code</label><input id="previewCode" type="password" autocomplete="off" placeholder="Code set in your Vercel environment"><p class="hint">Enter the private tester code from the project owner. Never enter an OpenAI API key here.</p><label class="choice" for="consent" style="margin-top:18px"><input id="consent" type="checkbox"><span>I understand my profile and interview answers are stored for this private beta and shared with OpenAI to generate questions.</span></label><div class="error" id="liveSetupError" aria-live="polite"></div><button id="liveSetupBack" class="btn secondary" type="button">← Back to profile</button><button id="liveBegin" class="btn" type="button">Begin live interview →</button></section>
 <section id="liveLoading" class="panel hidden" aria-live="polite" aria-busy="true"><div class="ai-wait" role="status"><div class="ai-spinner" aria-hidden="true"></div><h2 id="liveLoadingTitle">Preparing your next question…</h2><p id="liveLoadingDescription">Your answer is being processed. Generating a role-specific question may take several seconds for complex scenarios.</p><p class="hint">Please keep this tab open. Your previous answers have been saved.</p></div></section>
 <section id="liveInterview" class="panel hidden"><div class="eyebrow">Live AI interview</div><div class="row"><h2 id="liveTitle">Role-specific skills assessment</h2><span class="tag" id="liveCategory"></span></div><div class="progress" role="progressbar" aria-label="AI interview progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="liveProgress"><span id="liveBar"></span></div><p id="liveProgressText" class="hint" aria-live="polite">Mapping your target-role skills</p><h3 id="liveQuestion"></h3><p id="liveHint" class="hint"></p><div id="liveField"></div><div id="liveError" class="error" aria-live="polite"></div><p class="hint">All indispensable skills are covered before full completion. You can pause and resume, or choose a clearly labelled preliminary report if you need to stop early.</p><div class="footeractions"><button type="button" class="btn secondary" id="liveBack">← Back</button><button type="button" class="btn" id="liveNext">Continue →</button><button type="button" class="btn hidden" id="retryNext">Retry generating question →</button><button type="button" class="btn secondary hidden" id="finishEarlyBtn">Finish Early &amp; Get Preliminary Report</button></div></section>
-<section id="complete" class="panel hidden"><div class="eyebrow">Assessment complete</div><h2 id="completionTitle">You've completed the skill assessment</h2><p id="completionDescription" class="notice hidden"></p><p>Your answers have been saved to your private beta session. You can export them now. Generate your personalised career report or export your answers. Payment and email delivery are not yet available.</p><button class="btn" id="reportBtn" type="button" class="btn hidden">Generate my career report →</button><button class="btn secondary" id="downloadBtn">Download my answers (JSON)</button><button class="btn secondary" id="restartBtn" type="button">Start New Assessment</button><button class="btn secondary" id="deleteSessionBtn">Delete my test session</button><div class="error" id="reportError" aria-live="polite"></div><div class="error" id="deleteError" aria-live="polite"></div></section>
-<section id="report" class="panel hidden"><div class="eyebrow">Personalised career report · Private beta</div><h2>Your career development report</h2><p class="hint">Based on your profile and scenario-based assessment answers. Suggestions are for exploration, not verified suitability or hiring decisions.</p><p id="reportDate" class="muted"></p><div id="reportContent"></div><div class="footeractions no-print"><button class="btn" id="printReportBtn" type="button">Print / Save as PDF</button><button class="btn secondary" id="downloadReportBtn" type="button">Download report (JSON)</button><button class="btn secondary" id="reportBackBtn" type="button">← Back to assessment</button><button class="btn secondary" id="reportNewBtn" type="button">Start New Assessment</button><button class="btn secondary" id="reportHistoryBtn" type="button">Previous assessments</button></div><div class="error" id="reportPageError" aria-live="polite"></div></section>
+<section id="complete" class="panel hidden"><div class="eyebrow">Assessment complete</div><h2 id="completionTitle">You've completed the skill assessment</h2><p id="completionDescription" class="notice hidden"></p><p>Your answers have been saved. Generate your personalised career report. Paid customers will also receive it at the email address entered before payment.</p><button class="btn" id="reportBtn" type="button" class="btn hidden">Generate my career report →</button><button class="btn secondary" id="downloadBtn">Download my answers (JSON)</button><button class="btn secondary" id="restartBtn" type="button">Start New Assessment</button><button class="btn secondary" id="deleteSessionBtn">Delete my test session</button><div class="error" id="reportError" aria-live="polite"></div><div class="error" id="deleteError" aria-live="polite"></div></section>
+<section id="report" class="panel hidden"><div class="eyebrow">Personalised career report · Private beta</div><h2>Your career development report</h2><p class="hint">Based on your profile and scenario-based assessment answers. Suggestions are for exploration, not verified suitability or hiring decisions.</p><p id="reportDate" class="muted"></p><div id="reportContent"></div><div class="notice no-print hidden" id="emailStatusNote" aria-live="polite"></div><button class="btn secondary no-print hidden" id="emailRetryBtn" type="button">Retry sending report email</button><div class="footeractions no-print"><button class="btn" id="printReportBtn" type="button">Print / Save as PDF</button><button class="btn secondary" id="downloadReportBtn" type="button">Download report (JSON)</button><button class="btn secondary" id="reportBackBtn" type="button">← Back to assessment</button><button class="btn secondary" id="reportNewBtn" type="button">Start New Assessment</button><button class="btn secondary" id="reportHistoryBtn" type="button">Previous assessments</button></div><div class="error" id="reportPageError" aria-live="polite"></div></section>
 </main>
 <script>
 'use strict';
@@ -167,11 +175,13 @@ function download(){
  const obj={version:'1.0-beta',mode:assessmentMode,createdAt:new Date().toISOString(),profile:assessmentMode==='live'?(savedServerProfile||profileForAPI()):qs.filter(q=>!q.showIf||q.showIf(data)).map(q=>({id:q.id,question:q.q,answer:formatValue(q)})),interview:assessmentMode==='live'?liveHistory.map(h=>({question:h.question,category:h.category,answer:h.answer})):visibleInterview().map(q=>({id:q.id,question:q.q,answer:effectiveInterviewValue(q)}))};
  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='career-professional-assessment.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
 }
-$('startBtn').addEventListener('click',()=>{if(liveSession){startFreshAssessment();return;}show('profile');render()});$('profileForm').addEventListener('submit',save);$('backBtn').addEventListener('click',back);$('reviewBack').addEventListener('click',()=>{step=visibleIndices().at(-1);fromReview=false;render();show('profile')});$('interviewBtn').addEventListener('click',()=>{assessmentMode='demo';startInterview()});$('liveStartBtn').addEventListener('click',()=>{assessmentMode='live';$('previewCode').disabled=Boolean(liveSession);$('previewCode').placeholder=liveSession?'Existing session will be resumed':'Private code from the project owner';$('consent').checked=Boolean(liveSession);show('liveSetup')});$('interviewBack').addEventListener('click',interviewBack);$('interviewNext').addEventListener('click',nextInterview);$('downloadBtn').addEventListener('click',download);$('restartBtn').addEventListener('click',startFreshAssessment);
+$('startBtn').addEventListener('click',()=>{if(liveSession){startFreshAssessment();return;}if(paidPurchase){show('profile');render();return;}show('checkout')});$('previewEntryBtn').addEventListener('click',()=>{privatePreview=true;show('profile');render()});$('profileForm').addEventListener('submit',save);$('backBtn').addEventListener('click',back);$('reviewBack').addEventListener('click',()=>{step=visibleIndices().at(-1);fromReview=false;render();show('profile')});$('interviewBtn').addEventListener('click',()=>{assessmentMode='demo';startInterview()});$('liveStartBtn').addEventListener('click',()=>{assessmentMode='live';if(paidPurchase&&!privatePreview){beginPaidLive();return;}$('previewCode').disabled=Boolean(liveSession);$('previewCode').placeholder=liveSession?'Existing session will be resumed':'Private code from the project owner';$('consent').checked=Boolean(liveSession);show('liveSetup')});$('interviewBack').addEventListener('click',interviewBack);$('interviewNext').addEventListener('click',nextInterview);$('downloadBtn').addEventListener('click',download);$('restartBtn').addEventListener('click',startFreshAssessment);
 
 // ── LIVE PRIVATE BETA: server owns history and current question ──
 const SESSION_KEY='careerProfessionalsBetaV1';
 const PREVIOUS_KEY='careerProfessionalsBetaPreviousV1';
+const PURCHASE_KEY='careerProfessionalsPaidCheckoutV1', PENDING_KEY='careerProfessionalsPendingCheckoutV1';
+let paidPurchase=null,pendingCheckout=null,privatePreview=false,checkoutBusy=false;
 const liveHistory=[];
 let liveSession=null,currentLiveQuestion=null,liveBusy=false,savedServerProfile=null,liveCompletionMode='full';
 let liveProgressState={assessed:0,total:0};
@@ -179,18 +189,19 @@ const apiPrefix=location.pathname.startsWith('/careerprofessionals')?'/careerpro
 function profileForAPI(){const profile={};for(const q of qs){if(q.showIf&&!q.showIf(data))continue;if(data[q.id]!==undefined)profile[q.id]=formatValue(q)}profile.profileGroup=group();return profile}
 function storeSession(session){
  liveSession=session;
- if(session)sessionStorage.setItem(SESSION_KEY,JSON.stringify(session));
- else sessionStorage.removeItem(SESSION_KEY);
+ if(session){sessionStorage.setItem(SESSION_KEY,JSON.stringify(session));if(session.paid)localStorage.setItem(SESSION_KEY,JSON.stringify(session));}
+ else {sessionStorage.removeItem(SESSION_KEY);localStorage.removeItem(SESSION_KEY);}
  $('resumeBtn').classList.toggle('hidden',!session);
  renderPreviousSessions();
 }
 function readPreviousSessions(){
- try{return(JSON.parse(sessionStorage.getItem(PREVIOUS_KEY)||'[]')||[])
+ try{return([...(JSON.parse(sessionStorage.getItem(PREVIOUS_KEY)||'[]')||[]),...(JSON.parse(localStorage.getItem(PREVIOUS_KEY)||'[]')||[])].filter((s,i,all)=>all.findIndex(x=>x.sessionId===s.sessionId)===i))
   .filter(s=>s&&s.sessionId&&s.sessionToken&&(!s.accessExpiresAt||Date.parse(s.accessExpiresAt)>Date.now()));}
  catch{return[];}
 }
 function savePreviousSessions(sessions){
  sessionStorage.setItem(PREVIOUS_KEY,JSON.stringify(sessions.slice(0,5)));
+ localStorage.setItem(PREVIOUS_KEY,JSON.stringify(sessions.filter(s=>s.paid).slice(0,5)));
  renderPreviousSessions();
 }
 function archiveCurrentSession(){
@@ -228,9 +239,10 @@ function startFreshAssessment(){
  for(const k of Object.keys(data))delete data[k];
  for(const k of Object.keys(interviewAnswers))delete interviewAnswers[k];
  assessmentMode='demo';step=0;interviewStep=0;fromReview=false;
+ paidPurchase=null;localStorage.removeItem(PURCHASE_KEY);privatePreview=false;
  $('previewCode').disabled=false;$('previewCode').value='';$('previewCode').placeholder='Code set in your Vercel environment';
  $('consent').checked=false;$('resumeError').textContent='';$('reportError').textContent='';
- updateReportAvailability();show('profile');render();
+ updateReportAvailability();show('checkout');
 }
 function showQuestionWait(first=false){
  $('liveLoadingTitle').textContent=first?'Preparing your focused skills assessment…':'Loading your next question…';
@@ -382,7 +394,7 @@ async function deleteMySession(){
  if(!liveSession){location.reload();return;}
  if(!confirm('Permanently delete this test assessment and all its saved answers?'))return;
  $('deleteError').textContent='';$('deleteSessionBtn').disabled=true;
- try{await apiCall('delete-session');storeSession(null);savedServerProfile=null;liveHistory.length=0;location.reload();}
+ try{await apiCall('delete-session');storeSession(null);paidPurchase=null;localStorage.removeItem(PURCHASE_KEY);savedServerProfile=null;liveHistory.length=0;location.reload();}
  catch(e){$('deleteError').textContent=e.message;$('deleteSessionBtn').disabled=false;}
 }
 $('liveSetupBack').addEventListener('click',()=>{renderReview();show('review')});
@@ -455,7 +467,7 @@ function renderCareerReport(report,generatedAt){
 async function loadCareerReport(){
  if(!liveSession){$('reportError').textContent='Reports are available after completing the live AI interview.';return;}
  if(reportBusy)return;reportBusy=true;$('reportError').textContent='';$('reportBtn').disabled=true;$('reportBtn').textContent='Generating your report…';
- try{const response=await apiCall('generate-report');renderCareerReport(response.report,response.generatedAt);}
+ try{const response=await apiCall('generate-report');renderCareerReport(response.report,response.generatedAt);showReportEmailStatus(response.emailStatus);}
  catch(error){$('reportError').textContent=error.message;}
  finally{reportBusy=false;$('reportBtn').disabled=false;$('reportBtn').textContent='View / generate my career report →';}
 }
@@ -464,7 +476,64 @@ function downloadCareerReport(){
  const blob=new Blob([JSON.stringify({generatedAt:currentReportDate,report:currentCareerReport},null,2)],{type:'application/json'});
  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='career-professionals-report.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-try{const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null');if(s&&s.sessionId&&s.sessionToken){storeSession(s);assessmentMode='live';updateReportAvailability()}}catch{sessionStorage.removeItem(SESSION_KEY)}
+
+// ── PAYMENT-FIRST CUSTOMER JOURNEY (no password, no email link) ──
+function rupees(paise){return '₹'+(Number(paise)/100).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});}
+function setCheckoutBusy(b){checkoutBusy=b;for(const id of ['payBtn','applyCoupon','recoverPaymentBtn'])$(id).disabled=b;if(b)$('payBtn').textContent='Processing securely…';else if(pendingCheckout)$('payBtn').textContent='Reopen checkout →';else if(lastQuote)$('payBtn').textContent=lastQuote.amount===0?'Redeem coupon & Continue →':`Pay ${rupees(lastQuote.amount)} & Continue →`;else $('payBtn').textContent='Pay ₹499 & Continue →';}
+let lastQuote={amount:49900,discount:0};
+function setQuote(quote){lastQuote=quote;$('priceDetails').replaceChildren();const strong=document.createElement('strong');strong.textContent='Assessment: ₹499';const info=document.createElement('p');info.textContent=`Discount: ${rupees(quote.discount)} · Amount payable: ${rupees(quote.amount)}`;$('priceDetails').append(strong,info);$('payBtn').textContent=quote.amount===0?'Redeem coupon & Continue →':`Pay ${rupees(quote.amount)} & Continue →`;}
+async function checkoutRequest(route,body){const res=await fetch(`${apiPrefix}/${route}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'});let out;try{out=await res.json();}catch{throw Error('Could not read the checkout response. Please try again.');}if(!res.ok)throw Error(out.error||'Checkout temporarily unavailable.');return out;}
+async function applyCoupon(){if(checkoutBusy)return;setCheckoutBusy(true);$('checkoutError').textContent='';try{const code=$('couponCode').value.trim();const quote=await checkoutRequest('validate-coupon',{couponCode:code});setQuote(quote);$('checkoutStatus').textContent=code?'Coupon applied. The final amount will be confirmed before checkout.':'Standard assessment price.';}catch(e){$('checkoutError').textContent=e.message;setQuote({amount:49900,discount:0});}finally{setCheckoutBusy(false);}}
+function recordPending(order){pendingCheckout=order;localStorage.setItem(PENDING_KEY,JSON.stringify(order));$('recoverPaymentBtn').classList.remove('hidden');}
+function completePayment(order){paidPurchase={orderId:order.orderId,checkoutNonce:order.checkoutNonce,email:order.email};localStorage.setItem(PURCHASE_KEY,JSON.stringify(paidPurchase));pendingCheckout=null;localStorage.removeItem(PENDING_KEY);$('recoverPaymentBtn').classList.add('hidden');privatePreview=false;setCheckoutBusy(false);show('profile');render();}
+async function verifyPayment(order,payment={}){const result=await checkoutRequest('verify-payment',{orderId:order.orderId,checkoutNonce:order.checkoutNonce,...payment});if(!result.paid){$('checkoutStatus').textContent=result.message||'Payment is processing. Please check again shortly.';return false;}completePayment(order);return true;}
+async function recoverPayment(){if(!pendingCheckout)return;setCheckoutBusy(true);$('checkoutError').textContent='';$('checkoutStatus').textContent='Checking your previous payment securely…';try{await verifyPayment(pendingCheckout);}catch(e){$('checkoutError').textContent=e.message;}finally{setCheckoutBusy(false);}}
+async function loadRazorpayCheckout(){if(window.Razorpay)return;await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://checkout.razorpay.com/v1/checkout.js';s.onload=resolve;s.onerror=()=>reject(Error('Razorpay checkout could not load. Please check your connection.'));document.head.appendChild(s);});if(!window.Razorpay)throw Error('Checkout is unavailable. Please retry.');}
+async function openRazorpayOrder(order){
+ await loadRazorpayCheckout();$('checkoutStatus').textContent='Complete payment in the Razorpay window.';
+ const modal=new window.Razorpay({key:order.razorpayKeyId,amount:order.amount,currency:'INR',order_id:order.orderId,name:'AI Early Career Guide',description:'Career Professionals Assessment',prefill:{email:order.email},handler:async result=>{
+   setCheckoutBusy(true);$('checkoutStatus').textContent='Verifying your payment…';
+   try{await verifyPayment(order,result);}catch(e){$('checkoutError').textContent=e.message+' If you paid, select Check Previous Payment — do not pay again.';}finally{setCheckoutBusy(false);}
+ },modal:{ondismiss:()=>{$('checkoutStatus').textContent='Checkout closed. Check payment before retrying, or reopen this order.';setCheckoutBusy(false);}},theme:{color:'#1c59ac'}});
+ modal.on('payment.failed',response=>{$('checkoutError').textContent=response?.error?.description||'Payment failed. You can retry using the same order.';});
+ modal.open();
+}
+async function payAndContinue(){
+ if(checkoutBusy)return;
+ if(pendingCheckout){setCheckoutBusy(true);$('checkoutError').textContent='';try{await openRazorpayOrder(pendingCheckout);}catch(e){$('checkoutError').textContent=e.message;setCheckoutBusy(false);}return;}
+ if(!$('checkoutConsent').checked){$('checkoutError').textContent='Please confirm consent to proceed.';return;}
+ setCheckoutBusy(true);$('checkoutError').textContent='';$('checkoutStatus').textContent='Creating a secure checkout…';
+ try{
+  const order=await checkoutRequest('create-order',{email:$('checkoutEmail').value,couponCode:$('couponCode').value,consent:true});
+  if(!order.requiresPayment){await verifyPayment(order);return;}
+  recordPending(order);await openRazorpayOrder(order);
+ }catch(e){$('checkoutError').textContent=e.message;setCheckoutBusy(false);}
+}
+async function beginPaidLive(){
+ if(!paidPurchase)return;
+ setLiveBusy(true);$('liveSetupError').textContent='';showQuestionWait(true);
+ try{
+  if(!liveSession){const profile=profileForAPI();const session=await apiCall('start',{paidOrder:{orderId:paidPurchase.orderId,checkoutNonce:paidPurchase.checkoutNonce},profile},true);savedServerProfile=profile;storeSession({...session,email:paidPurchase.email});}
+  await fetchNext();
+ }catch(e){show('review');$('resumeError').textContent=e.message;alert('Could not start your paid assessment. Your verified purchase is saved in this browser. Please retry.');}
+ finally{setLiveBusy(false);}
+}
+function showReportEmailStatus(status){
+ const node=$('emailStatusNote'),retry=$('emailRetryBtn');retry.classList.add('hidden');node.classList.add('hidden');
+ if(!liveSession?.paid)return;
+ node.classList.remove('hidden');
+ if(status==='sent')node.textContent='Your full career report has been emailed to your payment email address.';
+ else{node.textContent=status==='sending'?'Your report email is being processed.':'Your report is ready, but the email has not been confirmed. You can retry sending it below.';retry.classList.remove('hidden');}
+}
+$('emailRetryBtn').addEventListener('click',async()=>{const btn=$('emailRetryBtn');btn.disabled=true;try{const result=await apiCall('send-report');showReportEmailStatus(result.status);}catch(e){$('emailStatusNote').textContent=e.message;}finally{btn.disabled=false;}});
+$('applyCoupon').addEventListener('click',applyCoupon);
+$('payBtn').addEventListener('click',payAndContinue);
+$('recoverPaymentBtn').addEventListener('click',recoverPayment);
+$('checkoutBack').addEventListener('click',()=>show('welcome'));
+try{const p=JSON.parse(localStorage.getItem(PURCHASE_KEY)||'null');if(p?.orderId&&p?.checkoutNonce&&p?.email)paidPurchase=p;}catch{localStorage.removeItem(PURCHASE_KEY);}
+try{const p=JSON.parse(localStorage.getItem(PENDING_KEY)||'null');if(p?.orderId&&p?.checkoutNonce){pendingCheckout=p;$('recoverPaymentBtn').classList.remove('hidden');$('checkoutEmail').value=p.email||'';$('checkoutStatus').textContent='A previous checkout was found. Check payment before creating a new order.';}}catch{localStorage.removeItem(PENDING_KEY);}
+
+try{const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||localStorage.getItem(SESSION_KEY)||'null');if(s&&s.sessionId&&s.sessionToken){storeSession(s);assessmentMode='live';updateReportAvailability()}}catch{sessionStorage.removeItem(SESSION_KEY)}
 renderPreviousSessions();
 </script>
 </body></html>
