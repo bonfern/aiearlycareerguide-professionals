@@ -2,10 +2,11 @@ import crypto from 'node:crypto';
 import admin from 'firebase-admin';
 import {ApiError,sha,safeEqual,validateAnswer} from './security.js';
 import {loadFirebaseServiceAccount} from './firebase-config.js';
+import {competencyProgress} from './interview-logic.js';
 export {ApiError,sha,safeEqual,validateAnswer};
 
 export const COLLECTION = 'professionalAssessments_v1';
-export const MAX_AI_CALLS = 12;
+export const MAX_AI_CALLS = 115;
 const ACCESS_MS = 7 * 24 * 60 * 60 * 1000;
 const RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -61,6 +62,21 @@ export function parseBody(req,max=24000) {
   if (!b || typeof b !== 'object' || Array.isArray(b)) throw new ApiError(400,'Invalid request.');
   return b;
 }
-export function safeState(session) {
-  return { status:session.status, profile:session.profile, answered:session.history?.length||0, history:(session.history||[]).map(({question,category,answer})=>({question,category,answer})), question:session.currentQuestion||null, maxQuestions:9, accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null };
+// Answer keys and rationales are server-only until the completed report.
+export function publicQuestion(question){
+ if(!question)return null;
+ const {answerKey,rationale,...safe}=question;
+ return safe;
+}
+export function publicProgress(session){
+ const blueprint=session.blueprint||[];
+ if(!blueprint.length)return {assessed:0,total:0};
+ const {assessed,total}=competencyProgress(blueprint,session.history||[]);
+ return {assessed,total};
+}
+export function safeState(session){
+ return {status:session.status,profile:session.profile,answered:session.history?.length||0,
+  history:(session.history||[]).map(({question,category,answer,competencyId,subskill,questionType})=>({question,category,answer,competencyId,subskill,questionType})),
+  question:publicQuestion(session.currentQuestion),progress:publicProgress(session),
+  accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null};
 }

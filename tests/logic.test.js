@@ -2,84 +2,78 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Script,runInNewContext} from 'node:vm';
-import {CORE_TOPICS_BY_GROUP,MIN_QUESTIONS,MAX_QUESTIONS,groupFromProfile,validatePayload,chooseTopic,cleanModelResult} from '../api/_lib/interview-logic.js';
+import {MAX_QUESTIONS,groupFromProfile,validatePayload,validateBlueprint,competencyProgress,nextCompetency,nextQuestionType,cleanModelResult} from '../api/_lib/interview-logic.js';
 import {ApiError,validateAnswer} from '../api/_lib/security.js';
 import {generateQuestion} from '../api/_lib/ai.js';
-const example={employmentStatus:'Employed',currentJobTitle:'Operations manager',qualification:'Bachelor’s degree',skills:'Planning',careerObjective:'Get promoted'};
-const entry=i=>({question:`Meaningful question ${i+1}?`,answer:'Useful option',category:'Capability'});
+const example={employmentStatus:'Employed',currentJobTitle:'Process Excellence AVP',qualification:'Master’s degree',skills:'Change management',careerObjective:'Get promoted',targetJobTitle:'Director Transformation'};
+const blueprint=[
+ ...['Transformation strategy','Benefits measurement','Change adoption','Operating model design','Digital delivery'].map((name,i)=>({id:`s${i+1}`,name,type:'technical',importance:'essential',benchmark:`Can independently lead ${name.toLowerCase()} at director level with reliable decisions.`,subskills:['Application in complex programmes','Risk and measurement']})),
+ ...['Executive influence','Leading cross-functional teams','Decision making under uncertainty','Conflict resolution'].map((name,i)=>({id:`s${i+6}`,name,type:'behavioural',importance:'important',benchmark:`Can demonstrate credible ${name.toLowerCase()} in a complex situation.`,subskills:['Competing stakeholder priorities','Coaching and accountability']}))
+];
+const questionFor=(skill,kind,history=[])=>({competencies:history.length?[]:blueprint,question:{competencyId:skill.id,category:skill.name,questionKind:kind,difficulty:history.length===0?'applied':history.at(-1).correct?'advanced':'applied',
+ text:`A director faces competing priorities during a transformation programme. Which action best addresses ${skill.name.toLowerCase()} while balancing delivery risks?`,
+ options:['Clarify stakeholder outcomes and adoption measures','Begin execution before checking business need','Focus only on technology delivery','Defer all decisions indefinitely','Not sure'],answerKey:0,rationale:'Clarifying measurable outcomes and stakeholder requirements reduces implementation risk.',subskill:skill.subskills[0]}});
+const answer=(skill,kind,correct)=>({competencyId:skill.id,questionType:kind,correct,difficulty:'applied',question:'Question',answer:'Answer',subskill:skill.subskills[0]});
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-test('7 essential topics, maximum 9 questions, with different routes',()=>{
- assert.equal(MIN_QUESTIONS,7);assert.equal(MAX_QUESTIONS,9);
- assert.equal(Object.keys(CORE_TOPICS_BY_GROUP).length,7);
- for(const topics of Object.values(CORE_TOPICS_BY_GROUP))assert.equal(topics.length,7);
- for(const status of ['Employed','Self-employed / freelancer','Between jobs','Returning after a career break','Recent graduate','Student nearing graduation','Other']){
+test('career-stage profile routing and editable target role',()=>{
+ for(const status of ['Employed','Self-employed / freelancer','Between jobs','Returning after a career break','Recent graduate','Student nearing graduation']){
   const p={...example,employmentStatus:status};
-  assert.equal(chooseTopic(p,[]),CORE_TOPICS_BY_GROUP[groupFromProfile(p)][0]);
-  assert.equal(chooseTopic(p,Array.from({length:7},(_,i)=>entry(i))),'Only essential clarification or finish');
- }
-});
-test('graduates and returners do not need a current job title',()=>{
- for(const status of ['Recent graduate','Student nearing graduation','Returning after a career break','Self-employed / freelancer']){
-  const p={employmentStatus:status,qualification:'Bachelor’s degree',skills:'Communication',careerObjective:'Explore my options'};
+  if(!['Employed','Between jobs'].includes(status))delete p.currentJobTitle;
   assert.equal(validatePayload({profile:p,history:[]}).profile.profileGroup,groupFromProfile(p));
  }
- assert.throws(()=>validatePayload({profile:{...example,currentJobTitle:''},history:[]}),/job title/);
- assert.throws(()=>validatePayload({profile:{...example,profileGroup:'student'},history:[]}),/Invalid profile group/);
- assert.throws(()=>validatePayload({profile:example,history:Array.from({length:10},(_,i)=>entry(i))}),/Invalid interview history/);
-});
-test('AI cannot finish early, exceed the limit, or force open text during core questions',()=>{
- const q={done:false,category:'wrong',text:'Which experience best represents your strengths?',type:'single',options:['An internship','A project','Other'],hint:''};
- assert.equal(cleanModelResult(q,example,[]).question.type,'single');
- assert.equal(cleanModelResult(q,example,[]).question.category,CORE_TOPICS_BY_GROUP.employed[0]);
- assert.throws(()=>cleanModelResult({done:true},example,[]),/before essential/);
- assert.throws(()=>cleanModelResult({...q,type:'text',options:[]},example,[]),/Free text/);
- const seven=Array.from({length:7},(_,i)=>entry(i));
- assert.deepEqual(cleanModelResult({done:true},example,seven),{done:true});
- assert.equal(cleanModelResult({...q,type:'text',options:[]},example,seven).question.type,'text');
- assert.throws(()=>cleanModelResult(q,example,Array.from({length:9},(_,i)=>entry(i))),/Maximum/);
-});
-test('server validates Other and multi-choice selections',()=>{
- const q={type:'single',options:['Operations','Other']};
- assert.equal(validateAnswer(q,'Other: Sustainability'),'Other: Sustainability');
- assert.throws(()=>validateAnswer(q,'Other: '),ApiError);
- const multi={type:'multi',options:['A','B','C','Other']};
- assert.equal(validateAnswer(multi,'A; B; Other: D'),'A; B; Other: D');
- assert.throws(()=>validateAnswer(multi,'A; B; C; D'),ApiError);
-});
-test('frontend displays different questions for each status and preserves Other fields',()=>{
- new Script(html.match(/<script>([\s\S]*?)<\/script>/)[1]);
+ const js=html.match(/<script>([\s\S]*?)<\/script>/)[1];new Script(js);
  const part=html.split('// Cohort-specific profile.')[1].split('const $=id=>')[0];
- const fn=(status)=>runInNewContext(`// Cohort-specific profile.${part}\ndata.employmentStatus=${JSON.stringify(status)};JSON.stringify(qs.filter(q=>!q.showIf||q.showIf(data)).map(q=>({id:q.id,q:typeof q.q==='function'?q.q(data):q.q,options:optionsFor(q)})))`);
- const employed=JSON.parse(fn('Employed'));
- const student=JSON.parse(fn('Student nearing graduation'));
- const returner=JSON.parse(fn('Returning after a career break'));
- const self=JSON.parse(fn('Self-employed / freelancer'));
- assert.equal(employed[0].id,'employmentStatus');
- assert(employed.some(q=>q.id==='currentJobTitle'));
- assert(!student.some(q=>q.id==='currentJobTitle'));
- assert(student.some(q=>q.id==='graduationWhen'));
- assert(returner.some(q=>q.id==='careerBreakDuration'));
- assert(self.some(q=>q.id==='businessStage'));
- assert.notDeepEqual(student.find(q=>q.id==='careerObjective').options,employed.find(q=>q.id==='careerObjective').options);
- assert.match(html,/Please specify/);
+ const run=status=>JSON.parse(runInNewContext(`// Cohort-specific profile.${part}\ndata.employmentStatus=${JSON.stringify(status)};JSON.stringify(qs.filter(q=>!q.showIf||q.showIf(data)).map(q=>q.id))`));
+ assert(run('Employed').includes('targetJobTitle'));
+ assert(!run('Student nearing graduation').includes('currentJobTitle'));
+ assert(run('Returning after a career break').includes('careerBreakDuration'));
+ assert(run('Self-employed / freelancer').includes('businessStage'));
+ assert.match(html,/displayChoice/);assert(!html.includes('up to 9'));
  assert(!html.includes('sk-proj-'));
 });
-test('uses high-reasoning Responses API and strict JSON schema, without leaking key',async()=>{
+test('role-specific map covers both skill families and rejects weak plans',()=>{
+ assert.equal(MAX_QUESTIONS,100);assert.equal(validateBlueprint(blueprint).length,9);
+ assert.throws(()=>validateBlueprint(blueprint.slice(0,3)),/8–16/);
+ assert.throws(()=>validateBlueprint([...blueprint.slice(0,8),blueprint[0]]),/repeated/);
+});
+test('knowledge and scenario evidence, mixed answers trigger a third probe, no fixed-length interview',()=>{
+ assert.equal(nextQuestionType(blueprint[0],[]),'knowledge');
+ const h1=[answer(blueprint[0],'knowledge',true)];assert.equal(nextQuestionType(blueprint[0],h1),'scenario');
+ const h2=[...h1,answer(blueprint[0],'scenario',false)];
+ assert.equal(nextCompetency(blueprint,h2).id,'s1');
+ assert.equal(competencyProgress(blueprint,h2).skills[0].resolved,false);
+ const h3=[...h2,answer(blueprint[0],'scenario',true)];
+ assert.equal(nextCompetency(blueprint,h3).id,'s2');
+ const all=blueprint.flatMap(s=>s.type==='technical'?[answer(s,'knowledge',true),answer(s,'scenario',true)]:[answer(s,'scenario',true),answer(s,'scenario',true)]);
+ assert.equal(nextCompetency(blueprint,all),null);assert.equal(competencyProgress(blueprint,all).assessed,9);
+});
+test('strict AI question validation and server-only grading data',()=>{
+ const first=cleanModelResult(questionFor(blueprint[0],'knowledge'),null,null,[]);
+ assert.equal(first.blueprint.length,9);assert.equal(first.question.answerKey,0);
+ assert.equal(first.question.answerKey,0);
+ assert.equal(first.question.rationale.startsWith('Clarifying'),true);
+ // The transport layer omits both private fields in its publicQuestion function.
+ const storeCode=readFileSync(new URL('../api/_lib/store.js',import.meta.url),'utf8');
+ assert.match(storeCode,/const \{answerKey,rationale,\.\.\.safe\}=question/);
+ assert.match(storeCode,/return \{assessed,total\}/);
+ assert.throws(()=>cleanModelResult({...questionFor(blueprint[0],'knowledge'),question:{...questionFor(blueprint[0],'knowledge').question,options:['A','B','C','D','E']}},null,null,[]),/Invalid options|Not sure/);
+ assert.equal(validateAnswer(first.question,first.question.options[1]),first.question.options[1]);
+ assert.throws(()=>validateAnswer(first.question,'My own invented answer'),ApiError);
+});
+test('high reasoning Responses call uses strict JSON without leaking the key',async()=>{
  const old=globalThis.fetch,key=process.env.OPENAI_API_KEY,model=process.env.OPENAI_MODEL;
- process.env.OPENAI_API_KEY='mock-only-key';process.env.OPENAI_MODEL='gpt-6-astra';let calls=0;
+ process.env.OPENAI_API_KEY='mock-only-key';process.env.OPENAI_MODEL='gpt-6-astra';
  globalThis.fetch=async(url,opts)=>{
-  calls++;assert.equal(url,'https://api.openai.com/v1/responses');
-  const payload=JSON.parse(opts.body);assert.equal(payload.model,'gpt-6-astra');assert.equal(payload.reasoning.effort,'high');
-  assert.equal(payload.text.format.strict,true);assert.equal(payload.store,false);
-  assert.equal(opts.headers.Authorization,'Bearer mock-only-key');
-  return {ok:true,json:async()=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify({done:false,category:'Test',text:'Which example best shows your experience?',type:'single',options:['A project','A customer outcome','Other'],hint:''})}]}]})};
+  assert.equal(url,'https://api.openai.com/v1/responses');
+  const p=JSON.parse(opts.body);assert.equal(p.model,'gpt-6-astra');assert.equal(p.reasoning.effort,'high');assert.equal(p.store,false);assert.equal(p.text.format.strict,true);
+  return {ok:true,json:async()=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(questionFor(blueprint[0],'knowledge'))}]}]})};
  };
- try{const result=await generateQuestion(example,[]);assert.equal(result.question.category,CORE_TOPICS_BY_GROUP.employed[0]);assert.equal(calls,1);}
+ try{const r=await generateQuestion(example,[]);assert.equal(r.blueprint.length,9);assert.equal(r.question.questionType,'knowledge');}
  finally{globalThis.fetch=old;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;if(model===undefined)delete process.env.OPENAI_MODEL;else process.env.OPENAI_MODEL=model;}
 });
-test('Firebase service account supports direct JSON',async()=>{
+test('Firebase accepts direct JSON credentials',async()=>{
  const {firebaseConfigured,loadFirebaseServiceAccount}=await import('../api/_lib/firebase-config.js');
  const a={project_id:'prof-demo',client_email:'test@example.com',private_key:'-----BEGIN PRIVATE KEY-----\nMOCK\n-----END PRIVATE KEY-----\n'};
- assert.equal(firebaseConfigured({FIREBASE_SERVICE_ACCOUNT_JSON:JSON.stringify(a)}),true);
+ assert(firebaseConfigured({FIREBASE_SERVICE_ACCOUNT_JSON:JSON.stringify(a)}));
  assert.deepEqual(loadFirebaseServiceAccount({FIREBASE_SERVICE_ACCOUNT_JSON:JSON.stringify(a)}),a);
 });

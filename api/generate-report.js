@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import {db,authorize,ApiError,output,handleError,postOnly} from './_lib/store.js';
-import {MIN_QUESTIONS} from './_lib/interview-logic.js';
+import {competencyProgress} from './_lib/interview-logic.js';
 import {generateReport} from './_lib/report.js';
 
 export default async function handler(req,res){
@@ -11,16 +11,16 @@ export default async function handler(req,res){
     const state=await db().runTransaction(async tx=>{
       const snap=await tx.get(ref),s=snap.data();
       if(!s)throw new ApiError(401,'Assessment session not found.');
-      if(s.status!=='complete'||(s.history||[]).length<MIN_QUESTIONS)throw new ApiError(409,'Finish your live AI interview before generating a report.');
+      if(s.status!=='complete'||!s.blueprint?.length||competencyProgress(s.blueprint,s.history||[]).total===0)throw new ApiError(409,'Finish your role-specific skill assessment before generating a report.');
       if(s.report)return {kind:'cached',report:s.report,generatedAt:s.reportGeneratedAt?.toDate?.()?.toISOString?.()||null};
       if(s.reportCallsUsed>=2)throw new ApiError(429,'Report generation limit reached for this preview session.');
       if(s.reportLease?.until>Date.now())throw new ApiError(409,'Your report is already being generated. Please wait and try again.');
       leaseId=crypto.randomUUID();
       tx.update(ref,{reportLease:{id:leaseId,until:Date.now()+175000},reportCallsUsed:(s.reportCallsUsed||0)+1,updatedAt:new Date()});
-      return {kind:'generate',profile:s.profile,history:s.history};
+      return {kind:'generate',profile:s.profile,history:s.history,blueprint:s.blueprint};
     });
     if(state.kind==='cached')return output(res,200,{report:state.report,generatedAt:state.generatedAt,cached:true});
-    const report=await generateReport(state.profile,state.history);
+    const report=await generateReport(state.profile,state.history,state.blueprint);
     const saved=await db().runTransaction(async tx=>{
       const snap=await tx.get(ref),s=snap.data();
       if(!s||s.reportLease?.id!==leaseId)throw new ApiError(409,'Report generation was superseded. Please refresh.');
