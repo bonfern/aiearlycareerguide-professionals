@@ -55,3 +55,11 @@ With Node 20+ installed: `npm install`, copy `.env.example` to `.env.local` and 
 ## Privacy and launch restrictions
 
 The private preview code is a shared tester gate, not a paid customer login. Never distribute this version as a public paid assessment. Require verified user login/OTP, consent and privacy terms, durable account recovery, enforceable per-user quotas, payments and report generation before launch. The browser receives only its own session bearer token and data; server functions use Firebase Admin credentials. Restrict tester access with Vercel deployment protection if available. Obtain user permission before using identifiable career data; avoid proprietary employer or candidate information in a preview.
+
+## Live V2: personalised report beta
+
+This release adds `api/generate-report.js` and `api/_lib/report.js`. After completing a **live** AI interview, testers can generate an evidence-based report. The server saves the generated report on the existing Firestore session and returns the cached report on later requests, rather than charging for a new generation. The report can be printed/saved as PDF using the browser or exported as JSON. Guided offline demo sessions do not generate AI reports.
+
+**Deploy:** Replace the full contents of the repository with this package, preserving the `api/` and `tests/` directories. No new environment variables are required. Keep your existing `FIREBASE_SERVICE_ACCOUNT_JSON`, `OPENAI_API_KEY`, `OPENAI_MODEL`, and `PREVIEW_ACCESS_CODE` in Vercel. Commit and wait for the new Vercel deployment. Existing live beta sessions remain in Firestore; completed sessions can generate reports while their 7-day access tokens remain valid. Do not upload Firebase keys or `.env` files to GitHub.
+
+**Beta safeguards:** Reports use only saved self-reported responses, avoid arbitrary numerical scores, and identify evidence gaps. Report generation is limited to two attempts per session. The private beta has no user login, payment, email delivery or public report sharing; keep the preview code restricted to trusted testers. Report records follow the same retention policy as the assessment session. The optional Firestore TTL must be configured separately for the `retainUntil` field.

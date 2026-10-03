@@ -5,18 +5,20 @@
 <title>Career Professionals | AI Early Career Guide</title>
 <style>
 :root{font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#17253e;background:#f4f7fc}*{box-sizing:border-box}body{margin:0}header{background:#102447;color:white;padding:20px max(24px,calc((100vw - 960px)/2));font-weight:750}header small{display:block;color:#bcd0ed;font-weight:400;margin-top:5px}main{max-width:960px;margin:42px auto;padding:0 22px}.panel{background:#fff;border-radius:18px;padding:34px;box-shadow:0 8px 30px #10244712}h1{font-size:clamp(29px,4vw,44px);margin:0 0 14px}h2{font-size:clamp(23px,3vw,29px);margin:0 0 13px}p{line-height:1.6;color:#52617b}.eyebrow{color:#2163be;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:11px}.btn{border:0;border-radius:9px;padding:13px 20px;background:#1c59ac;color:white;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px}.btn.secondary{background:#e9eff9;color:#173e78;margin-right:8px}.btn:disabled{opacity:.45;cursor:not-allowed}.hidden{display:none!important}.progress{height:8px;background:#e9eff9;border-radius:8px;margin:19px 0 28px}.progress span{display:block;height:100%;background:#2673c9;border-radius:8px;transition:width .2s}label{display:block;font-weight:650;margin:12px 0 8px}input:not([type=checkbox]),select,textarea{width:100%;padding:13px;border:1px solid #bfcce0;border-radius:8px;font:inherit;background:white;color:#17253e}textarea{min-height:105px}.hint{font-size:13px;color:#65748b;margin:10px 0}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:22px 0}.card{border:1px solid #dbe4f2;padding:18px;border-radius:12px}.card strong{display:block;margin-bottom:7px}.review{padding:14px 0;border-bottom:1px solid #e7ecf5;display:flex;justify-content:space-between;align-items:center;gap:12px}.review strong{display:block;margin-bottom:5px}.review .value{font-size:15px;color:#415371;white-space:pre-wrap}.notice{background:#f1f6ff;padding:15px;border-radius:9px;color:#345177;margin:20px 0}.choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:15px}.choice{display:flex;align-items:center;gap:10px;border:1.5px solid #ced9e9;border-radius:11px;padding:14px 12px;font-weight:550;margin:0;cursor:pointer;min-height:54px}.choice.selected{border-color:#2673c9;background:#eef5ff;box-shadow:0 0 0 1px #2673c9}.choice input{flex:0 0 auto;accent-color:#1c59ac;width:17px;height:17px;margin:0}.freeform{margin-top:14px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.muted{font-size:13px;color:#63738a}.error{color:#b42318;font-size:13px;font-weight:650;min-height:20px;margin:12px 0 0}.linkbtn{background:none;border:0;color:#1c59ac;font-weight:700;cursor:pointer;padding:8px;white-space:nowrap}.num{color:#59708f;font-size:13px}.sectionhead{font-weight:750;margin:23px 0 0}.tag{display:inline-block;background:#e8f1ff;border-radius:50px;padding:5px 12px;font-size:13px;color:#245c9b}.footeractions{margin-top:19px}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #89baf9;outline-offset:3px}@media(max-width:600px){main{margin:22px auto}.panel{padding:22px}.choice-grid{grid-template-columns:1fr}.review{align-items:flex-start}}
+.report-block{padding:16px 0;border-top:1px solid #dce6f2}.report-block h3{color:#163b72}.report-item{padding:13px 0;border-bottom:1px solid #e8eef7}.report-item strong{display:block;color:#193b69;margin-bottom:4px}.report-item p{margin:5px 0 9px}.report-list{padding-left:21px;line-height:1.7}.report-meta{font-size:13px;color:#586b83}.report-note{background:#f1f6ff;border-left:4px solid #4075b6;padding:12px 16px;margin:18px 0}@media print{body{background:white}header,.no-print,main>section:not(#report){display:none!important}main{max-width:none;margin:0;padding:0}#report{display:block!important;box-shadow:none;padding:0}.report-block{break-inside:avoid}}
 </style>
 </head>
 <body>
 <header>AI EARLY CAREER GUIDE <small>Career Professionals · Private beta V1</small></header>
 <main>
-<section id="welcome" class="panel"><div class="eyebrow">Your next career chapter</div><h1>Discover your professional direction</h1><p>Build a detailed professional profile, reflect on your experience and explore your next career move through a structured assessment.</p><div class="cards"><div class="card"><strong>Detailed professional profile</strong><p>One question at a time, with choices wherever possible.</p></div><div class="card"><strong>Adaptive interview</strong><p>Try the guided demo, or complete your live AI interview.</p></div><div class="card"><strong>Career roadmap</strong><p>Your answers can be exported; your personalised report is the next release.</p></div></div><div class="notice">Guided demo works offline. In the live beta, your profile and answers are saved securely in Firestore and sent to OpenAI for question generation. Only use information you are comfortable sharing in this private test. Payment and career reports are not yet available.</div><button id="startBtn" class="btn" type="button">Start professional profile →</button><button id="resumeBtn" class="btn secondary hidden" type="button">Resume my saved interview →</button><div id="resumeError" class="error" aria-live="polite"></div></section>
+<section id="welcome" class="panel"><div class="eyebrow">Your next career chapter</div><h1>Discover your professional direction</h1><p>Build a detailed professional profile, reflect on your experience and explore your next career move through a structured assessment.</p><div class="cards"><div class="card"><strong>Detailed professional profile</strong><p>One question at a time, with choices wherever possible.</p></div><div class="card"><strong>Adaptive interview</strong><p>Try the guided demo, or complete your live AI interview.</p></div><div class="card"><strong>Career roadmap</strong><p>Generate a personalised report after your live AI interview.</p></div></div><div class="notice">Guided demo works offline. In the live beta, your profile and answers are saved securely in Firestore and sent to OpenAI for question generation. Only use information you are comfortable sharing in this private test. Report generation is available to private beta testers after the live interview. Payment and email delivery are not yet available.</div><button id="startBtn" class="btn" type="button">Start professional profile →</button><button id="resumeBtn" class="btn secondary hidden" type="button">Resume my saved interview →</button><div id="resumeError" class="error" aria-live="polite"></div></section>
 <section id="profile" class="panel hidden"><div class="eyebrow">Professional profile</div><div class="row"><h2 id="stepTitle"></h2><span id="sectionLabel" class="tag"></span></div><div class="progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><span id="bar"></span></div><form id="profileForm"><label id="question" for="answer"></label><p id="hint" class="hint"></p><div id="field"></div><div id="error" class="error" aria-live="polite"></div><div class="footeractions"><button type="button" class="btn secondary" id="backBtn">← Back</button><button type="submit" class="btn" id="nextBtn">Continue →</button></div></form></section>
 <section id="review" class="panel hidden"><div class="eyebrow">Profile review</div><h2>Your professional profile</h2><p>Review your answers. Select <strong>Edit</strong> beside any item to change it without starting again.</p><div id="answers"></div><button class="btn secondary" id="reviewBack">← Back to profile</button><button class="btn secondary" id="interviewBtn">Try guided demo →</button><button class="btn" id="liveStartBtn">Start live AI interview →</button></section>
 <section id="interview" class="panel hidden"><div class="eyebrow">Interview preview · Preset questions, not live AI</div><div class="row"><h2 id="interviewTitle"></h2><span class="tag" id="interviewCategory"></span></div><div class="progress" role="progressbar" aria-label="Interview completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="interviewProgress"><span id="interviewBar"></span></div><h3 id="interviewQuestion"></h3><p id="interviewHint" class="hint"></p><div id="interviewField"></div><div id="interviewError" class="error" aria-live="polite"></div><p class="hint">Offline preview: these are preset questions tailored to your profile. Live AI follow-ups are not yet connected.</p><div class="footeractions"><button class="btn secondary" id="interviewBack" type="button">← Back</button><button class="btn" id="interviewNext" type="button">Continue →</button></div></section>
 <section id="liveSetup" class="panel hidden"><div class="eyebrow">Secure development preview</div><h2>Live adaptive AI interview</h2><p>Each question is generated based on your profile and previous responses. Your answers are sent to the server and OpenAI to create the next question. This is a development preview, not the paid assessment.</p><div class="notice">Private beta: your answers are stored in Firebase for this test and shared with OpenAI to generate follow-up questions. Your preview access expires after 7 days. Records remain until deleted by you or removed by the administrator; the optional 30-day Firestore deletion rule must be enabled separately. Please avoid uploading confidential employer information.</div><label for="previewCode">Private preview access code</label><input id="previewCode" type="password" autocomplete="off" placeholder="Code set in your Vercel environment"><p class="hint">Enter the private tester code from the project owner. Never enter an OpenAI API key here.</p><label class="choice" for="consent" style="margin-top:18px"><input id="consent" type="checkbox"><span>I understand my profile and interview answers are stored for this private beta and shared with OpenAI to generate questions.</span></label><div class="error" id="liveSetupError" aria-live="polite"></div><button id="liveSetupBack" class="btn secondary" type="button">← Back to profile</button><button id="liveBegin" class="btn" type="button">Begin live interview →</button></section>
 <section id="liveInterview" class="panel hidden"><div class="eyebrow">Live AI interview</div><div class="row"><h2 id="liveTitle">Question 1</h2><span class="tag" id="liveCategory"></span></div><div class="progress" role="progressbar" aria-label="AI interview progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="liveProgress"><span id="liveBar"></span></div><h3 id="liveQuestion"></h3><p id="liveHint" class="hint"></p><div id="liveField"></div><div id="liveError" class="error" aria-live="polite"></div><p class="hint">Usually 10–15 short questions. The AI can ask relevant follow-ups or finish after sufficient evidence. You may correct your most recent answer.</p><div class="footeractions"><button type="button" class="btn secondary" id="liveBack">← Back</button><button type="button" class="btn" id="liveNext">Continue →</button><button type="button" class="btn hidden" id="retryNext">Retry generating question →</button></div></section>
-<section id="complete" class="panel hidden"><div class="eyebrow">Assessment complete</div><h2>You've completed the interview</h2><p>Your answers have been saved to your private beta session. You can export them now. AI reports, payment and email will be introduced in later releases.</p><button class="btn" id="downloadBtn">Download my answers (JSON)</button><button class="btn secondary" id="restartBtn">Start again</button><button class="btn secondary" id="deleteSessionBtn">Delete my test session</button><div class="error" id="deleteError" aria-live="polite"></div></section>
+<section id="complete" class="panel hidden"><div class="eyebrow">Assessment complete</div><h2>You've completed the interview</h2><p>Your answers have been saved to your private beta session. You can export them now. Generate your personalised career report or export your answers. Payment and email delivery are not yet available.</p><button class="btn" id="reportBtn" type="button" class="btn hidden">Generate my career report →</button><button class="btn secondary" id="downloadBtn">Download my answers (JSON)</button><button class="btn secondary" id="restartBtn">Start again</button><button class="btn secondary" id="deleteSessionBtn">Delete my test session</button><div class="error" id="reportError" aria-live="polite"></div><div class="error" id="deleteError" aria-live="polite"></div></section>
+<section id="report" class="panel hidden"><div class="eyebrow">Personalised career report · Private beta</div><h2>Your career development report</h2><p class="hint">Based on your self-reported profile and interview answers. Suggestions are for exploration, not verified suitability or hiring decisions.</p><p id="reportDate" class="muted"></p><div id="reportContent"></div><div class="footeractions no-print"><button class="btn" id="printReportBtn" type="button">Print / Save as PDF</button><button class="btn secondary" id="downloadReportBtn" type="button">Download report (JSON)</button><button class="btn secondary" id="reportBackBtn" type="button">← Back to assessment</button></div><div class="error" id="reportPageError" aria-live="polite"></div></section>
 </main>
 <script>
 'use strict';
@@ -116,7 +118,7 @@ function nextInterview(){
  const q=visibleInterview()[interviewStep];const value=interviewAnswers[q.id];
  if(q.required&&(!value||!String(value).trim())){$('interviewError').textContent='Please answer this question to continue.';return}
  if(value==='Other'&&!(interviewAnswers[q.id+'Other']||'').trim()){$('interviewError').textContent='Please specify your answer.';$('interviewOther').focus();return}
- if(interviewStep<visibleInterview().length-1){interviewStep++;renderInterview();window.scrollTo(0,0)}else show('complete')
+ if(interviewStep<visibleInterview().length-1){interviewStep++;renderInterview();window.scrollTo(0,0)}else{show('complete');updateReportAvailability()}
 }
 function interviewBack(){
  if(interviewStep>0){interviewStep--;renderInterview();window.scrollTo(0,0)}
@@ -145,17 +147,18 @@ async function apiCall(route,body={},isStart=false){
  return result;
 }
 function updateFromServer(result){
+ assessmentMode='live';
  liveHistory.length=0;for(const entry of(result.history||[]))liveHistory.push({...entry});
  if(result.profile)savedServerProfile=result.profile;
  currentLiveQuestion=result.question||null;
- if(result.status==='complete'){show('complete');return true;}
+ if(result.status==='complete'){show('complete');updateReportAvailability();return true;}
  if(currentLiveQuestion){renderLive();show('liveInterview');return true;}
  return false;
 }
 async function fetchNext(){
  $('retryNext').classList.add('hidden');$('liveNext').classList.remove('hidden');
  const state=await apiCall('next-question');
- if(state.done){currentLiveQuestion=null;show('complete');return;}
+ if(state.done){currentLiveQuestion=null;show('complete');updateReportAvailability();return;}
  currentLiveQuestion=state.question;renderLive();show('liveInterview');
 }
 async function beginLive(){
@@ -229,7 +232,7 @@ async function backLive(){
  finally{setLiveBusy(false);}
 }
 async function resumeLive(){
- if(!liveSession)return;
+ if(!liveSession)return;assessmentMode='live';
  $('resumeError').textContent='';setLiveBusy(true);
  try{
   const state=await apiCall('resume');
@@ -259,6 +262,48 @@ $('liveBack').addEventListener('click',backLive);
 $('retryNext').addEventListener('click',retryNext);
 $('resumeBtn').addEventListener('click',resumeLive);
 $('deleteSessionBtn').addEventListener('click',deleteMySession);
-try{const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null');if(s&&s.sessionId&&s.sessionToken)storeSession(s)}catch{sessionStorage.removeItem(SESSION_KEY)}
+$('reportBtn').addEventListener('click',loadCareerReport);
+$('printReportBtn').addEventListener('click',()=>window.print());
+$('downloadReportBtn').addEventListener('click',downloadCareerReport);
+$('reportBackBtn').addEventListener('click',()=>show('complete'));
+// Report generation is server-side and available only for completed live sessions.
+let currentCareerReport=null,currentReportDate=null,reportBusy=false;
+function updateReportAvailability(){
+ $('reportBtn').classList.toggle('hidden',!liveSession||assessmentMode==='demo');
+}
+function reportText(parent,tag,value,cls){const node=document.createElement(tag);node.textContent=value;if(cls)node.className=cls;parent.appendChild(node);return node;}
+function reportSection(parent,title,items,renderer){
+ const section=document.createElement('section');section.className='report-block';reportText(section,'h3',title);
+ if(!items.length)reportText(section,'p','Not enough information was provided to establish this.');
+ for(const item of items){const wrap=document.createElement('div');wrap.className='report-item';renderer(wrap,item);section.appendChild(wrap);}
+ parent.appendChild(section);
+}
+function renderCareerReport(report,generatedAt){
+ currentCareerReport=report;currentReportDate=generatedAt||null;
+ const host=$('reportContent');host.replaceChildren();
+ $('reportDate').textContent=generatedAt?'Generated '+new Date(generatedAt).toLocaleDateString(undefined,{year:'numeric',month:'long',day:'numeric'}):'';
+ const summary=document.createElement('div');summary.className='report-note';reportText(summary,'strong','Career overview');reportText(summary,'p',report.summary);host.appendChild(summary);
+ reportSection(host,'Strengths supported by your answers',report.strengths,(wrap,item)=>{reportText(wrap,'strong',item.strength);reportText(wrap,'p','Your example: '+item.evidence);});
+ reportSection(host,'Achievements mentioned',report.achievements,(wrap,item)=>{reportText(wrap,'strong',item.achievement);reportText(wrap,'p','Self-reported evidence: '+item.evidence);});
+ reportSection(host,'Development opportunities',report.developmentAreas,(wrap,item)=>{reportText(wrap,'strong',item.area);reportText(wrap,'p',item.why);reportText(wrap,'p','Suggested next step: '+item.nextStep);});
+ reportSection(host,'Career directions to explore',report.careerDirections,(wrap,item)=>{reportText(wrap,'strong',item.direction);reportText(wrap,'p',item.rationale);reportText(wrap,'p','What to validate: '+item.toValidate);});
+ reportSection(host,'Your 30 / 60 / 90-day plan',report.actionPlan,(wrap,item)=>{reportText(wrap,'strong',item.period+' — '+item.focus);const ul=document.createElement('ul');ul.className='report-list';item.actions.forEach(action=>reportText(ul,'li',action));wrap.appendChild(ul);});
+ reportSection(host,'Information to clarify',report.evidenceGaps,(wrap,item)=>{reportText(wrap,'p',item);});
+ const note=document.createElement('p');note.className='report-meta';note.textContent='This AI-generated report is based only on self-reported information. It is not a validated aptitude test, verified competency assessment or guarantee of employment.';host.appendChild(note);
+ show('report');
+}
+async function loadCareerReport(){
+ if(!liveSession){$('reportError').textContent='Reports are available after completing the live AI interview.';return;}
+ if(reportBusy)return;reportBusy=true;$('reportError').textContent='';$('reportBtn').disabled=true;$('reportBtn').textContent='Generating your report…';
+ try{const response=await apiCall('generate-report');renderCareerReport(response.report,response.generatedAt);}
+ catch(error){$('reportError').textContent=error.message;}
+ finally{reportBusy=false;$('reportBtn').disabled=false;$('reportBtn').textContent='View / generate my career report →';}
+}
+function downloadCareerReport(){
+ if(!currentCareerReport)return;
+ const blob=new Blob([JSON.stringify({generatedAt:currentReportDate,report:currentCareerReport},null,2)],{type:'application/json'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='career-professionals-report.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+try{const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||'null');if(s&&s.sessionId&&s.sessionToken){storeSession(s);assessmentMode='live';updateReportAvailability()}}catch{sessionStorage.removeItem(SESSION_KEY)}
 </script>
 </body></html>

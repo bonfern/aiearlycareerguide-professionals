@@ -5,6 +5,7 @@ export default async function handler(req,res){
     const {ref}=await authorize(req);
     const result=await db().runTransaction(async tx=>{
       const snap=await tx.get(ref),s=snap.data();
+      if(s?.report)throw new ApiError(409,'This assessment already has a generated report. Start a new assessment to change your answers.');
       if(!s || !s.history.length)throw new ApiError(409,'There is no earlier answer to correct.');
       if(s.generationLease && s.generationLease.until > Date.now())throw new ApiError(409,'Please wait until the next question finishes generating.');
       const history=[...s.history],last=history.pop();
