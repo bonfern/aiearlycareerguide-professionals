@@ -129,7 +129,7 @@ export function accessEmailHtml({link,free=false,amount=0}){
  <p>${free?'Your coupon covered the full ₹499 assessment fee.':'We received your payment of ₹'+(amount/100).toLocaleString('en-IN',{maximumFractionDigits:2})+'.'}</p>
  <p>Start your assessment now, or use this link to return if you close your browser. No password is required.</p>
  <p><a href="${esc(link)}" style="display:inline-block;padding:13px 20px;border-radius:9px;background:#603be5;color:white;text-decoration:none;font-weight:bold">Start or Resume Assessment →</a></p>
- <p style="font-size:13px;color:#65718a">This private link works once and expires after 7 days. If you need another link, enter the same email address on our website and select Email Me My Link. Do not forward the link.</p>
+ <p style="font-size:13px;color:#65718a">This private link works once and expires after 7 days. If you need another link, enter the same email address on our website and select Continue Assessment. Do not forward this link.</p>
  <p style="font-size:13px;color:#65718a">Your final career report will be sent to this email address once completed.</p>
  <p style="font-size:13px">Need help? <a href="https://www.aiearlycareerguide.com/professionals/contact.html">Contact support</a>.</p>
  </body></html>`;

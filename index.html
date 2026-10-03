@@ -38,7 +38,7 @@ body{background:#fff}p{color:#526078}main{max-width:1200px;margin:0 auto;padding
 #existingAccessBox{background:#f2efff;border:1px solid #e0d9fc;margin:16px 0 20px}
 #existingAccessBox .btn{margin:5px 10px 5px 0}
 .checkout-actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center}.checkout-actions .btn{margin:6px 0}
-#checkoutConsent{accent-color:#6847e8}
+#checkoutConsent{accent-color:#6847e8}#emailGate,#resumeGate{max-width:690px;margin-left:auto;margin-right:auto}#emailGate .checkout-actions,#resumeGate .checkout-actions{margin-top:16px}#checkoutEmailDisplay,#returningEmail{overflow-wrap:anywhere}#emailGateStatus,#recoveryStatus{min-height:18px}
 </style>
 <link rel="stylesheet" href="professional-site.css">
 </head>
@@ -63,29 +63,37 @@ body{background:#fff}p{color:#526078}main{max-width:1200px;margin:0 auto;padding
 <div class="tester-actions"><button id="previewEntryBtn" class="linkbtn" type="button">Private tester access</button><button id="resumeBtn" class="btn secondary hidden" type="button">Resume My Saved Assessment →</button></div>
 <div id="previousSessions" class="notice hidden"><strong>Previous assessments on this browser</strong><p class="hint">Reopen earlier assessments while access is valid. Save reports as PDF for your own records.</p><div id="previousSessionList"></div></div><div id="resumeError" class="error" aria-live="polite"></div>
 </section>
+<section id="emailGate" class="panel checkout-panel hidden">
+ <div class="eyebrow">Step 1 of 2 · Your email</div><h2>Enter your email to get started</h2>
+ <p>We'll check if you have an unfinished assessment before asking you to pay.</p>
+ <label for="checkoutEmail">Email address</label><input type="email" id="checkoutEmail" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+ <div id="emailGateError" class="error" role="alert" aria-live="polite"></div>
+ <p id="emailGateStatus" class="hint" aria-live="polite"></p>
+ <div class="checkout-actions"><button type="button" id="emailGateBack" class="btn secondary">← Back</button><button type="button" id="emailGateNext" class="btn">Next →</button></div>
+</section>
+<section id="resumeGate" class="panel checkout-panel hidden">
+ <div class="eyebrow">Welcome back</div><h2>Continue your assessment</h2>
+ <p>We found an unfinished assessment for <strong id="returningEmail"></strong>. You don't need to pay again.</p>
+ <p id="resumeGateHint" class="hint"></p>
+ <div id="recoveryStatus" class="hint" aria-live="polite"></div><div id="resumeGateError" class="error" role="alert" aria-live="polite"></div>
+ <div class="checkout-actions"><button type="button" id="resumeGateBack" class="btn secondary">← Change Email</button><button type="button" id="continueExistingBtn" class="btn">Continue Assessment →</button></div>
+</section>
 <section id="checkout" class="panel checkout-panel hidden">
- <div class="eyebrow">Secure, password-free assessment</div><h2>Start or resume your career assessment</h2>
- <p>Enter your email first. If you already paid or used a complimentary coupon, continue your unfinished assessment without paying again.</p>
- <label for="checkoutEmail">Your email address</label><input type="email" id="checkoutEmail" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
- <div class="notice" id="existingAccessBox">
-  <strong>Already started an assessment?</strong><p class="hint">On this browser you can continue immediately. Otherwise, we'll email a secure link to the address used at checkout.</p>
-  <button class="btn secondary hidden" id="continueExistingBtn" type="button">Continue My Assessment →</button>
-  <button class="btn secondary" id="requestAccessLinkBtn" type="button">Email Me My Link</button>
-  <p class="hint" id="recoveryStatus" aria-live="polite"></p>
- </div>
+ <div class="eyebrow">Step 2 of 2 · Checkout</div><h2>Complete your assessment purchase</h2>
+ <p>Assessment for <strong id="checkoutEmailDisplay"></strong> · <button class="linkbtn" type="button" id="changeCheckoutEmail">Change Email</button></p>
  <div class="checkout-step-title">1. Review and accept</div>
  <label class="choice" for="checkoutConsent"><input type="checkbox" id="checkoutConsent" required><span>I agree to the <a class="policy-link" href="terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a> and <a class="policy-link" href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>. I consent to the processing of my profile and answers to generate my assessment. My email will be used for payment confirmation, a secure assessment link and my final report.</span></label>
  <p class="policy-small">Review our <a href="refund.html" target="_blank" rel="noopener">Refund Policy</a> and <a href="contact.html" target="_blank" rel="noopener">Contact Details</a> before payment.</p>
  <div class="checkout-step-title">2. Apply a coupon (optional)</div>
- <p class="hint">Enter a coupon after accepting the terms. If you don't have a coupon, continue directly to payment.</p>
+ <p class="hint">Accept the terms above before applying a coupon. If you don't have a coupon, continue to payment.</p>
  <label for="couponCode">Coupon code</label><div class="row" style="align-items:flex-end"><div style="flex:1;min-width:180px"><input id="couponCode" maxlength="30" placeholder="Enter coupon code" autocomplete="off"></div><button type="button" class="btn secondary" id="applyCoupon" disabled>Apply Coupon</button></div>
  <div class="notice" id="priceDetails"><strong>Assessment: ₹499</strong><p>Discount: ₹0 · Amount payable: ₹499</p></div>
- <div class="checkout-step-title">3. Complete checkout</div>
- <div id="checkoutError" class="error" aria-live="polite"></div><p class="hint" id="checkoutStatus" aria-live="polite"></p>
+ <div class="checkout-step-title">3. Confirm checkout</div>
+ <div id="checkoutError" class="error" role="alert" aria-live="polite"></div><p class="hint" id="checkoutStatus" aria-live="polite"></p>
  <div class="checkout-actions"><button id="checkoutBack" type="button" class="btn secondary">← Back</button><button type="button" id="payBtn" class="btn" disabled>Pay ₹499 &amp; Start Assessment →</button><button type="button" id="recoverPaymentBtn" class="btn secondary hidden">Check Previous Payment</button></div>
- <p class="hint" id="checkoutRecoveryHint">For paid checkouts, if your bank account was debited, check the earlier payment before trying again. Your assessment link will be emailed after confirmation.</p>
+ <p class="hint" id="checkoutRecoveryHint">If your bank account was debited, check the previous payment before retrying. Your assessment link will be emailed after payment confirmation.</p>
 </section>
-<section id="profile" class="panel hidden"><div id="accessEmailNotice" class="notice hidden" role="status"></div><div class="eyebrow">Professional profile</div><div class="row"><h2 id="stepTitle"></h2><span id="sectionLabel" class="tag"></span></div><div class="progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><span id="bar"></span></div><form id="profileForm"><label id="question" for="answer"></label><p id="hint" class="hint"></p><div id="field"></div><div id="error" class="error" aria-live="polite"></div><div class="footeractions"><button type="button" class="btn secondary" id="backBtn">← Back</button><button type="submit" class="btn" id="nextBtn">Continue →</button></div></form></section>
+<section id="profile" class="panel hidden"><div id="accessEmailNotice" class="hidden" aria-hidden="true"></div><div class="eyebrow">Professional profile</div><div class="row"><h2 id="stepTitle"></h2><span id="sectionLabel" class="tag"></span></div><div class="progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><span id="bar"></span></div><form id="profileForm"><label id="question" for="answer"></label><p id="hint" class="hint"></p><div id="field"></div><div id="error" class="error" aria-live="polite"></div><div class="footeractions"><button type="button" class="btn secondary" id="backBtn">← Back</button><button type="submit" class="btn" id="nextBtn">Continue →</button></div></form></section>
 <section id="review" class="panel hidden"><div class="eyebrow">Profile review</div><h2>Your professional profile</h2><p>Review your answers. Select <strong>Edit</strong> beside any item to change it without starting again.</p><div id="answers"></div><button class="btn secondary" id="reviewBack">← Back to profile</button><button class="btn secondary hidden" id="interviewBtn">Legacy offline preview →</button><button class="btn" id="liveStartBtn">Start live AI interview →</button></section>
 <section id="interview" class="panel hidden"><div class="eyebrow">Interview preview · Preset questions, not live AI</div><div class="row"><h2 id="interviewTitle"></h2><span class="tag" id="interviewCategory"></span></div><div class="progress" role="progressbar" aria-label="Interview completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="interviewProgress"><span id="interviewBar"></span></div><h3 id="interviewQuestion"></h3><p id="interviewHint" class="hint"></p><div id="interviewField"></div><div id="interviewError" class="error" aria-live="polite"></div><p class="hint">Offline preview: preset questions to try the format. The live interview adapts to your career stage and answers.</p><div class="footeractions"><button class="btn secondary" id="interviewBack" type="button">← Back</button><button class="btn" id="interviewNext" type="button">Continue →</button></div></section>
 <section id="liveSetup" class="panel hidden"><div class="eyebrow">Secure development preview</div><h2>Live adaptive AI interview</h2><p>We assess the most indispensable technical and behavioural skills for your target role. Two short multiple-choice questions are prepared for each skill, with a third only when the answers are mixed. This is a development preview, not the paid assessment.</p><div class="notice">Private beta: your answers are stored in Firebase for this test and shared with OpenAI to generate questions. Your preview access expires after 7 days. Records remain until deleted by you or removed by the administrator; the optional 30-day Firestore deletion rule must be enabled separately. Please avoid uploading confidential employer information.</div><label for="previewCode">Private preview access code</label><input id="previewCode" type="password" autocomplete="off" placeholder="Code set in your Vercel environment"><p class="hint">Enter the private tester code from the project owner. Never enter an OpenAI API key here.</p><label class="choice" for="consent" style="margin-top:18px"><input id="consent" type="checkbox"><span>I understand my profile and interview answers are stored for this private beta and shared with OpenAI to generate questions.</span></label><div class="error" id="liveSetupError" aria-live="polite"></div><button id="liveSetupBack" class="btn secondary" type="button">← Back to profile</button><button id="liveBegin" class="btn" type="button">Begin live interview →</button></section>
@@ -240,7 +248,7 @@ function download(){
  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='career-professional-assessment.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
 }
 $('headerStart').addEventListener('click',()=>{$('startBtn').click()});$('startFromPricing').addEventListener('click',()=>{$('startBtn').click()});
-$('startBtn').addEventListener('click',()=>{if(liveSession){show('welcome');resumeLive();return;}if(paidPurchase){show('profile');render();return;}show('checkout');syncCheckout();});$('previewEntryBtn').addEventListener('click',()=>{privatePreview=true;show('profile');render()});$('profileForm').addEventListener('submit',save);$('backBtn').addEventListener('click',back);$('reviewBack').addEventListener('click',()=>{step=visibleIndices().at(-1);fromReview=false;render();show('profile')});$('interviewBtn').addEventListener('click',()=>{assessmentMode='demo';startInterview()});$('liveStartBtn').addEventListener('click',()=>{assessmentMode='live';if(paidPurchase&&!privatePreview){beginPaidLive();return;}$('previewCode').disabled=Boolean(liveSession);$('previewCode').placeholder=liveSession?'Existing session will be resumed':'Private code from the project owner';$('consent').checked=Boolean(liveSession);show('liveSetup')});$('interviewBack').addEventListener('click',interviewBack);$('interviewNext').addEventListener('click',nextInterview);$('downloadBtn').addEventListener('click',download);$('restartBtn').addEventListener('click',startFreshAssessment);
+$('startBtn').addEventListener('click',()=>{show('emailGate');$('emailGateError').textContent='';$('emailGateStatus').textContent='';});$('previewEntryBtn').addEventListener('click',()=>{privatePreview=true;show('profile');render()});$('profileForm').addEventListener('submit',save);$('backBtn').addEventListener('click',back);$('reviewBack').addEventListener('click',()=>{step=visibleIndices().at(-1);fromReview=false;render();show('profile')});$('interviewBtn').addEventListener('click',()=>{assessmentMode='demo';startInterview()});$('liveStartBtn').addEventListener('click',()=>{assessmentMode='live';if(paidPurchase&&!privatePreview){beginPaidLive();return;}$('previewCode').disabled=Boolean(liveSession);$('previewCode').placeholder=liveSession?'Existing session will be resumed':'Private code from the project owner';$('consent').checked=Boolean(liveSession);show('liveSetup')});$('interviewBack').addEventListener('click',interviewBack);$('interviewNext').addEventListener('click',nextInterview);$('downloadBtn').addEventListener('click',download);$('restartBtn').addEventListener('click',startFreshAssessment);
 
 // ── LIVE PRIVATE BETA: server owns history and current question ──
 const SESSION_KEY='careerProfessionalsBetaV1';
@@ -308,7 +316,7 @@ function startFreshAssessment(){
  paidPurchase=null;localStorage.removeItem(PURCHASE_KEY);privatePreview=false;
  $('previewCode').disabled=false;$('previewCode').value='';$('previewCode').placeholder='Code set in your Vercel environment';
  $('consent').checked=false;$('resumeError').textContent='';$('reportError').textContent='';
- updateReportAvailability();show('checkout');
+ updateReportAvailability();show('emailGate');
 }
 function showQuestionWait(first=false){
  $('liveLoadingTitle').textContent=first?'Preparing your focused skills assessment…':'Loading your next question…';
@@ -546,12 +554,13 @@ function downloadCareerReport(){
 // ── PAYMENT + EMAIL RESUME (no passwords or duplicate charges) ──
 function rupees(paise){return '₹'+(Number(paise)/100).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});}
 let lastQuote={amount:49900,discount:0,couponCode:null},appliedCouponCode='',recoverBusy=false;
+let emailGateState={email:null,unfinished:false,sameDevice:false,sessionId:null};let emailGateBusy=false;
 const enteredEmail=()=>String($('checkoutEmail').value||'').trim().toLowerCase();
 const validCheckoutEmail=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(enteredEmail());
 function pendingForEmail(email=enteredEmail()){const p=pendingCheckouts[email];return p?.email===email&&p?.orderId&&p?.checkoutNonce?p:null;}
 function savePendingCheckouts(){localStorage.setItem(PENDING_MAP_KEY,JSON.stringify(pendingCheckouts));localStorage.removeItem(PENDING_KEY);}
 function clearPendingOrder(order){if(order?.email&&pendingCheckouts[order.email]?.orderId===order.orderId){delete pendingCheckouts[order.email];savePendingCheckouts();}}
-function sameBrowserPurchase(){return paidPurchase&&paidPurchase.email===enteredEmail();}
+function sameBrowserPurchase(){return Boolean(emailGateState.unfinished&&emailGateState.sameDevice&&paidPurchase?.email===enteredEmail());}
 function setCheckoutBusy(b){
  checkoutBusy=b;syncCheckout();
 }
@@ -566,13 +575,12 @@ function syncCheckout(){
  const consent=$('checkoutConsent').checked,validEmail=validCheckoutEmail();
  const typed=$('couponCode').value.trim().toUpperCase();
  const unapplied=typed!==appliedCouponCode,pending=validEmail?pendingForEmail():null;
- $('continueExistingBtn').classList.toggle('hidden',!sameBrowserPurchase());
- $('checkoutEmail').disabled=checkoutBusy;
+ $('checkoutEmail').disabled=emailGateBusy;
  $('couponCode').disabled=checkoutBusy;
  $('checkoutConsent').disabled=checkoutBusy;
  $('applyCoupon').disabled=checkoutBusy||!consent||!validEmail||!typed;
- $('payBtn').disabled=checkoutBusy||!consent||!validEmail||(typed.length>0&&unapplied);
- $('recoverPaymentBtn').classList.toggle('hidden',!pending||pending.amount===0);
+ $('payBtn').disabled=checkoutBusy||emailGateState.email!==enteredEmail()||emailGateState.unfinished||!consent||!validEmail||(typed.length>0&&unapplied);
+ $('recoverPaymentBtn').classList.toggle('hidden',!pending||pending.amount===0||emailGateState.email!==enteredEmail());
  $('checkoutRecoveryHint').classList.toggle('hidden',lastQuote.amount===0&&!pending);
  $('payBtn').textContent=checkoutBusy?'Processing securely…':pending?.amount>0?`Resume Earlier ${rupees(pending.amount)} Checkout →`:lastQuote.amount===0?'Confirm Free Access & Start Assessment →':`Pay ${rupees(lastQuote.amount)} & Start Assessment →`;
 }
@@ -584,6 +592,7 @@ async function checkoutRequest(route,body){
 function resetQuote(){setQuote({amount:49900,discount:0,couponCode:null});}
 async function applyCoupon(){
  if(checkoutBusy)return;
+ if(emailGateState.email!==enteredEmail()||emailGateState.unfinished){show('emailGate');$('emailGateError').textContent='Check your email first.';return;}
  if(!$('checkoutConsent').checked){$('checkoutError').textContent='Please agree to the Terms and Privacy Policy before applying a coupon.';$('checkoutConsent').focus();return;}
  if(!validCheckoutEmail()){$('checkoutError').textContent='Enter your email address first.';$('checkoutEmail').focus();return;}
  setCheckoutBusy(true);$('checkoutError').textContent='';
@@ -596,12 +605,7 @@ async function applyCoupon(){
  }catch(e){$('checkoutError').textContent=e.message;$('checkoutStatus').textContent='';resetQuote();}finally{setCheckoutBusy(false);}
 }
 function recordPending(order){pendingCheckouts[order.email]=order;savePendingCheckouts();syncCheckout();}
-function showConfirmationNotice(status){
- const node=$('accessEmailNotice');
- node.classList.remove('hidden');
- node.textContent=status==='sent'?'Your payment/complimentary access is confirmed. We have sent a private assessment link to your email address.':
- 'Your access is confirmed. If the email has not arrived yet, return to checkout and use Email Me My Link.';
-}
+function showConfirmationNotice(){ /* Confirmation is emailed; keep the assessment page focused on questions. */ }
 function completePayment(order,status='pending'){
  paidPurchase={orderId:order.orderId,checkoutNonce:order.checkoutNonce,email:order.email};
  localStorage.setItem(PURCHASE_KEY,JSON.stringify(paidPurchase));
@@ -618,18 +622,50 @@ async function recoverPayment(){
  setCheckoutBusy(true);$('checkoutError').textContent='';$('checkoutStatus').textContent='Checking your previous payment securely…';
  try{await verifyPayment(pending);}catch(e){$('checkoutError').textContent=e.message;}finally{setCheckoutBusy(false);}
 }
-async function requestAccessLink(){
- if(recoverBusy)return;
- if(!validCheckoutEmail()){$('recoveryStatus').textContent='Enter a valid email address first.';$('checkoutEmail').focus();return;}
- recoverBusy=true;$('requestAccessLinkBtn').disabled=true;$('recoveryStatus').textContent='Checking and emailing your access link…';
- try{const response=await checkoutRequest('create-order?mode=recover',{email:enteredEmail()});$('recoveryStatus').textContent=response.message;}
- catch(e){$('recoveryStatus').textContent=e.message;}
- finally{recoverBusy=false;$('requestAccessLinkBtn').disabled=false;}
+async function checkEmailAndRoute(){
+ if(emailGateBusy)return;
+ if(!validCheckoutEmail()){$('emailGateError').textContent='Enter a valid email address.';return;}
+ emailGateBusy=true;$('emailGateNext').disabled=true;
+ $('emailGateError').textContent='';$('emailGateStatus').textContent='Checking for an unfinished assessment…';
+ const email=enteredEmail();
+ try{
+  const proof=paidPurchase?.email===email?{orderId:paidPurchase.orderId,checkoutNonce:paidPurchase.checkoutNonce}:{};
+  const result=await checkoutRequest('create-order?mode=lookup',{email,...proof});
+  // Ignore a result if the visitor changed their email while the request was running.
+  if(email!==enteredEmail())return;
+  emailGateState={email,unfinished:Boolean(result.unfinished),sameDevice:Boolean(result.sameDevice),sessionId:result.sameDevice?(result.sessionId||null):null};
+  $('emailGateStatus').textContent='';$('checkoutEmailDisplay').textContent=email;
+  if(result.unfinished){
+   $('returningEmail').textContent=email;
+   $('resumeGateHint').textContent=result.sameDevice?'Your assessment is ready to continue.':
+    'For your privacy, we will email a secure continuation link when you select Continue Assessment.';
+   $('resumeGateError').textContent='';$('recoveryStatus').textContent='';show('resumeGate');
+  }else{
+   // Never reuse consent or an earlier coupon for a different customer.
+   $('checkoutConsent').checked=false;$('couponCode').value='';resetQuote();
+   $('checkoutStatus').textContent='';$('checkoutError').textContent='';show('checkout');syncCheckout();
+  }
+ }catch(e){$('emailGateError').textContent=e.message+' Please try again before proceeding.';}
+ finally{emailGateBusy=false;$('emailGateNext').disabled=false;}
 }
 async function continueExisting(){
- if(!sameBrowserPurchase())return;
- if(liveSession?.paid){show('welcome');await resumeLive();return;}
- show('profile');render();
+ if(recoverBusy||!emailGateState.unfinished||emailGateState.email!==enteredEmail())return;
+ if(sameBrowserPurchase()){
+  if(!emailGateState.sessionId){show('profile');render();return;}
+  // Only the specific unfinished session may resume with an existing browser token.
+  if(liveSession?.paid&&liveSession.email===enteredEmail()&&
+     liveSession.sessionId===emailGateState.sessionId){
+    show('welcome');await resumeLive();return;
+  }
+  // An existing assessment with a missing/old browser token requires an email link.
+ }
+ recoverBusy=true;$('continueExistingBtn').disabled=true;
+ $('recoveryStatus').textContent='Sending your secure continuation link…';$('resumeGateError').textContent='';
+ try{
+  await checkoutRequest('create-order?mode=recover',{email:enteredEmail()});
+  $('recoveryStatus').textContent='If you have an unfinished assessment, a secure continuation link has been emailed. Please check your inbox and Spam folder.';
+ }catch(e){$('resumeGateError').textContent=e.message;}
+ finally{recoverBusy=false;$('continueExistingBtn').disabled=false;}
 }
 async function loadRazorpayCheckout(){
  if(window.Razorpay)return;
@@ -656,9 +692,9 @@ async function openRazorpayOrder(order){
 }
 async function payAndContinue(){
  if(checkoutBusy)return;
+ if(emailGateState.email!==enteredEmail()||emailGateState.unfinished){show('emailGate');$('emailGateError').textContent='Check your email first.';return;}
  if(!validCheckoutEmail()){$('checkoutError').textContent='Enter a valid email address.';$('checkoutEmail').focus();return;}
  if(!$('checkoutConsent').checked){$('checkoutError').textContent='Accept the Terms and Privacy Policy before continuing.';$('checkoutConsent').focus();return;}
- if(sameBrowserPurchase()){await continueExisting();return;}
  const typed=$('couponCode').value.trim().toUpperCase();
  if(typed!==appliedCouponCode){$('checkoutError').textContent='Please apply your coupon before continuing.';return;}
  const pending=pendingForEmail();
@@ -681,7 +717,7 @@ async function beginPaidLive(){
  if(!paidPurchase)return;
  setLiveBusy(true);$('liveSetupError').textContent='';showQuestionWait(true);
  try{
-  if(!liveSession){const profile=profileForAPI();const session=await apiCall('start',{paidOrder:{orderId:paidPurchase.orderId,checkoutNonce:paidPurchase.checkoutNonce},profile},true);savedServerProfile=profile;storeSession({...session,email:paidPurchase.email});}
+  if(!liveSession){const profile=profileForAPI();const session=await apiCall('start',{paidOrder:{orderId:paidPurchase.orderId,checkoutNonce:paidPurchase.checkoutNonce},profile},true);savedServerProfile=profile;storeSession({...session,email:paidPurchase.email,orderId:paidPurchase.orderId});}
   await fetchNext();
  }catch(e){show('review');$('resumeError').textContent=e.message;alert('Could not start your assessment. Your verified purchase is saved in this browser. Please retry.');}
  finally{setLiveBusy(false);}
@@ -693,19 +729,23 @@ function showReportEmailStatus(status){
  else{node.textContent=status==='sending'?'Your report email is being processed.':'Your report is ready but the email is not confirmed. Retry below.';retry.classList.remove('hidden');}
 }
 $('emailRetryBtn').addEventListener('click',async()=>{const btn=$('emailRetryBtn');btn.disabled=true;try{const result=await apiCall('send-report');showReportEmailStatus(result.status);}catch(e){$('emailStatusNote').textContent=e.message;}finally{btn.disabled=false;}});
-$('checkoutEmail').addEventListener('input',()=>{resetQuote();$('checkoutError').textContent='';const pending=pendingForEmail();$('checkoutStatus').textContent=pending?(pending.amount===0?'An earlier complimentary checkout was found. Confirm access to continue.':'An earlier checkout was found for this email. Check its payment status before paying again.'):'';syncCheckout();});
+$('checkoutEmail').addEventListener('input',()=>{emailGateState={email:null,unfinished:false,sameDevice:false,sessionId:null};$('emailGateError').textContent='';$('emailGateStatus').textContent='';resetQuote();syncCheckout();});
+$('emailGateNext').addEventListener('click',checkEmailAndRoute);
+$('checkoutEmail').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();checkEmailAndRoute();}});
+$('emailGateBack').addEventListener('click',()=>show('welcome'));
+$('resumeGateBack').addEventListener('click',()=>show('emailGate'));
+$('changeCheckoutEmail').addEventListener('click',()=>show('emailGate'));
 $('couponCode').addEventListener('input',()=>{resetQuote();$('checkoutStatus').textContent='';$('checkoutError').textContent='';syncCheckout();});
 $('checkoutConsent').addEventListener('change',()=>{syncCheckout();$('checkoutError').textContent='';});
 $('applyCoupon').addEventListener('click',applyCoupon);
 $('payBtn').addEventListener('click',payAndContinue);
 $('continueExistingBtn').addEventListener('click',continueExisting);
-$('requestAccessLinkBtn').addEventListener('click',requestAccessLink);
 $('recoverPaymentBtn').addEventListener('click',recoverPayment);
-$('checkoutBack').addEventListener('click',()=>show('welcome'));
+$('checkoutBack').addEventListener('click',()=>show('emailGate'));
 try{const p=JSON.parse(localStorage.getItem(PURCHASE_KEY)||'null');if(p?.orderId&&p?.checkoutNonce&&p?.email)paidPurchase=p;}catch{localStorage.removeItem(PURCHASE_KEY);}
 try{const saved=JSON.parse(localStorage.getItem(PENDING_MAP_KEY)||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved)){for(const [email,p] of Object.entries(saved))if(p?.orderId&&p?.checkoutNonce&&p?.email===email)pendingCheckouts[email]=p;}const old=JSON.parse(localStorage.getItem(PENDING_KEY)||'null');if(old?.orderId&&old?.checkoutNonce&&old?.email&&!pendingCheckouts[old.email])pendingCheckouts[old.email]=old;savePendingCheckouts();}catch{localStorage.removeItem(PENDING_KEY);localStorage.removeItem(PENDING_MAP_KEY);}
 // Older checkouts remain recoverable only when the matching email is entered.
-const savedEmails=Object.keys(pendingCheckouts);if(savedEmails.length===1&&!$('checkoutEmail').value){$('checkoutEmail').value=savedEmails[0];$('checkoutStatus').textContent='A previous checkout exists for this email. Check its status before trying again.';}
+
 try{const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||localStorage.getItem(SESSION_KEY)||'null');if(s?.sessionId&&s?.sessionToken){storeSession(s);assessmentMode='live';updateReportAvailability();}}catch{sessionStorage.removeItem(SESSION_KEY);}
 renderPreviousSessions();syncCheckout();
 
@@ -721,10 +761,10 @@ async function redeemEmailLinkIfPresent(){
   clearPendingOrder({orderId:result.orderId,email:result.email});privatePreview=false;
   if(result.sessionId&&result.sessionToken){
    storeSession({sessionId:result.sessionId,sessionToken:result.sessionToken,paid:true,
-      accessExpiresAt:result.accessExpiresAt,email:result.email});
+      accessExpiresAt:result.accessExpiresAt,email:result.email,orderId:result.orderId});
    show('welcome');await resumeLive();
   }else{storeSession(null);showConfirmationNotice('sent');show('profile');render();}
- }catch(e){show('checkout');$('checkoutEmail').value='';syncCheckout();$('checkoutError').textContent=e.message+' Enter your purchase email and request a new link.';}
+ }catch(e){show('emailGate');$('checkoutEmail').value='';emailGateState={email:null,unfinished:false,sameDevice:false,sessionId:null};$('emailGateError').textContent=e.message+' Enter your email to check for an unfinished assessment.';}
 }
 redeemEmailLinkIfPresent();
 </script>

@@ -1,12 +1,29 @@
 import crypto from 'node:crypto';
 import {db,ApiError,output,handleError,postOnly,parseBody,sha} from './_lib/store.js';
-import {ORDERS,COUPONS,PRICE_PAISE,RESERVATION_MS,razorpay,readCoupon,cleanCode,cleanEmail,priceQuote,activeReservations,findIncompleteOrder,sendAccessEmail} from './_lib/commerce.js';
+import {ORDERS,COUPONS,PRICE_PAISE,RESERVATION_MS,razorpay,readCoupon,cleanCode,cleanEmail,priceQuote,activeReservations,findIncompleteOrder,sendAccessEmail,verifyCheckoutProof} from './_lib/commerce.js';
 
 export default async function handler(req,res){
  if(!postOnly(req,res))return;
  try{
   const body=parseBody(req),mode=String(req.query?.mode||new URL(req.url||'/', 'https://local.invalid').searchParams.get('mode')||'');
   const database=db();
+  if(mode==='lookup'){
+   const email=cleanEmail(body.email),day=new Date().toISOString().slice(0,10);
+   const ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].slice(0,80);
+   const limiter=database.collection('professionalEmailLookupDaily_v1').doc(`${day}_${sha(`${ip}|${process.env.RAZORPAY_KEY_SECRET}`).slice(0,40)}`);
+   await database.runTransaction(async tx=>{
+    const snap=await tx.get(limiter),count=Number(snap.data()?.count||0);
+    if(count>=40)throw new ApiError(429,'Too many email checks. Please try later.');
+    tx.set(limiter,{count:count+1,retainUntil:new Date(Date.now()+3*86400000)},{merge:true});
+   });
+   const unfinished=await findIncompleteOrder(database,email);
+   let sameDevice=false;
+   // The email lookup never discloses an order ID or session token.
+   if(unfinished&&body.orderId===unfinished.id&&typeof body.checkoutNonce==='string'){
+    try{verifyCheckoutProof(unfinished.data(),body.checkoutNonce,unfinished.id);sameDevice=true;}catch{}
+   }
+   return output(res,200,{unfinished:Boolean(unfinished),sameDevice,...(sameDevice?{sessionId:unfinished.data().sessionId||null}:{})});
+  }
   if(mode==='recover'){
    const email=cleanEmail(body.email);
    const day=new Date().toISOString().slice(0,10),ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].slice(0,80);
@@ -42,7 +59,7 @@ export default async function handler(req,res){
   const unfinished=await findIncompleteOrder(database,email);
   if(unfinished){
    try{await sendAccessEmail(unfinished.ref,{resend:true});}catch(error){console.warn('An unfinished assessment exists; reminder could not be sent',error.message);}
-   throw new ApiError(409,'If you previously purchased an assessment with this email, use “Email Me My Link” below instead of paying again.');
+   throw new ApiError(409,'An unfinished assessment exists for this email. Return to the email screen and select Continue Assessment.');
   }
   const nonce=crypto.randomBytes(32).toString('hex'),checkoutId=crypto.randomBytes(16).toString('hex');
   let quoted=null;
