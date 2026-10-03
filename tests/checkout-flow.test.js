@@ -6,7 +6,7 @@ import {Script} from 'node:vm';
 import start from '../api/start.js';
 import orderHandler from '../api/create-order.js';
 import verify, {config as verifyConfig} from '../api/verify-payment.js';
-import {ORDERS,COUPONS,createAccessLink,parseAccessLink,recoveredCheckoutProof,verifyCheckoutProof,sendAccessEmail} from '../api/_lib/commerce.js';
+import {ORDERS,COUPONS,createAccessLink,parseAccessLink,recoveredCheckoutProof,verifyCheckoutProof,sendAccessEmail,sendReportEmail} from '../api/_lib/commerce.js';
 import {sha} from '../api/_lib/security.js';
 
 process.env.RAZORPAY_KEY_ID='rzp_test_stub';
@@ -341,4 +341,19 @@ test('resume page uses a primary continue path, optional compact email-later act
  const direct=html.slice(html.indexOf('async function continueExisting(){'),html.indexOf('async function sendRecoveryLink(){'));
  assert.doesNotMatch(direct,/mode=recover/);
  assert.match(direct,/Opening your saved assessment/);
+});
+
+
+test('report email includes a generated A4 PDF attachment and an HTML skill summary',async()=>{
+ STORE.clear();outgoing=[];
+ const ref=new Ref('professionalAssessments_v1/assessment-report-v14');
+ await ref.set({paid:true,email:'pdf-test@example.com',report:{reportVersion:2,targetRole:'Director Transformation',summary:'Hypothetical practice findings.',
+ coverage:{assessed:1,total:1,answered:2},priorities:[{name:'Change Management',firstAction:'Practise adoption planning.'}],
+ skillAssessments:[{name:'Change Management',targetBenchmark:'Lead change adoption',currentCompetency:'Developing',priority:'Development priority',gap:'Improve adoption metrics',actions:['Complete a short course','Practise a case'],practiceTask:'Design an adoption plan',successIndicator:'Present measurable outcomes',learning:{free:[{name:'Free leadership learning',provider:'OpenLearn',url:'https://www.open.edu/openlearn/money-management/free-courses'}]}}],
+ additionalSkills:[],actionPlan:[{period:'Days 1–30',focus:'Learn',actions:['Practise change management']},{period:'Days 31–60',focus:'Apply',actions:['Create a case']},{period:'Days 61–90',focus:'Demonstrate',actions:['Present to mentor']}],progressChecklist:[{skill:'Change Management',deliverable:'Create a plan',evidence:'Obtain feedback'}]}});
+ const sent=await sendReportEmail(ref);assert.equal(sent.status,'sent');assert.equal(outgoing.length,1);
+ const mail=outgoing[0];assert.match(mail.html,/Essential competency overview/);assert.equal(mail.attachments?.length,1);
+ assert.equal(mail.attachments[0].filename,'career-competency-development-report.pdf');
+ const pdf=Buffer.from(mail.attachments[0].content,'base64');assert.match(pdf.toString('latin1').slice(0,9),/%PDF-1\.4/);
+ const duplicate=await sendReportEmail(ref);assert.equal(duplicate.status,'sent');assert.equal(outgoing.length,1);
 });

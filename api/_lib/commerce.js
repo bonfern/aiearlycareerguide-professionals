@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import {ApiError,db,sha,safeEqual} from './store.js';
+import {buildReportPdf} from './pdf-report.js';
 
 export const PRICE_PAISE = 49900;
 export const ORDERS = 'professionalOrders_v1';
@@ -57,12 +58,18 @@ export function signatureValid(orderId,paymentId,signature,secret=process.env.RA
  return safeEqual(computed,signature);
 }
 export function receiptHtml(report){
- const e=(x)=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
- const list=(arr)=>`<ul>${(arr||[]).map(x=>`<li>${e(x)}</li>`).join('')}</ul>`;
- const skills=(report.skillAssessments||[]).map(s=>`<section><h3>${e(s.name)}</h3><p><b>Required:</b> ${e(s.targetBenchmark)}</p><p><b>Current test-based competency:</b> ${e(s.currentCompetency)}</p><p><b>Gap / next-level opportunity:</b> ${e(s.gap)}</p><p><b>Specific actions:</b></p>${list(s.actions)}<p><b>Practical task:</b> ${e(s.practiceTask)}</p><p><b>Evidence of progress:</b> ${e(s.successIndicator)}</p></section>`).join('');
- const extras=(report.additionalSkills||[]).map(s=>`<section><h3>${e(s.name)} — Not tested</h3><p><b>Expected:</b> ${e(s.expectation)}</p><p><b>Next step:</b> ${e(s.nextStep)}</p><p><b>How to validate:</b> ${e(s.howToVerify)}</p></section>`).join('');
- const plan=(report.actionPlan||[]).map(s=>`<section><h3>${e(s.period)} — ${e(s.focus)}</h3>${list(s.actions)}</section>`).join('');
- return `<!doctype html><html><head><meta charset="utf-8"></head><body style="font:16px/1.55 Arial,sans-serif;color:#192c45;max-width:740px;margin:auto;padding:28px"><h1>Your Career Development Report</h1><p><b>Target role:</b> ${e(report.targetRole)}</p><p>${e(report.summary)}</p><h2>Essential skills assessed</h2>${skills||'<p>No skills were fully assessed.</p>'}<h2>Other required skills — Not tested</h2>${extras||'<p>No additional skills identified.</p>'}<h2>Your 30 / 60 / 90-day plan</h2>${plan}<hr><small>These findings are based on unproctored multiple-choice responses and self-reported information. They are not verification of workplace competence or a guarantee of employment.</small></body></html>`;
+ const e=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+ const list=arr=>`<ul style="padding-left:20px">${(arr||[]).map(x=>`<li style="margin-bottom:7px">${e(x)}</li>`).join('')}</ul>`;
+ const learn=(learning={})=>{
+  const group=(title,items)=>items?.length?`<p style="font-weight:700;margin:14px 0 5px">${title}</p><ul style="padding-left:20px">${items.map(r=>`<li><a href="${e(r.url)}" style="color:#5535d4">${e(r.name)}</a> — ${e(r.provider)}. ${e(r.description||'')} ${e(r.time?'('+r.time+')':'')}</li>`).join('')}</ul>`:'';
+  return group('Free learning',learning.free)+group('Paid learning — confirm current fees',learning.paid)+group('Optional certifications — check eligibility',learning.certifications)+(learning.freeGap?`<p style="color:#526078">${e(learning.freeGap)}</p>`:'');
+ };
+ const table=(report.skillAssessments||[]).map(s=>`<tr><td style="border:1px solid #dfe4ef;padding:9px">${e(s.name)}</td><td style="border:1px solid #dfe4ef;padding:9px">${e(s.currentCompetency)}</td><td style="border:1px solid #dfe4ef;padding:9px">${e(s.priority||'Review')}</td></tr>`).join('');
+ const skills=(report.skillAssessments||[]).map(s=>`<section style="page-break-inside:avoid;border-top:1px solid #e5e8f0;padding:17px 0"><h3 style="color:#17213d">${e(s.name)}</h3><p><b>Role expectation:</b> ${e(s.targetBenchmark)}</p><p><b>Current test-based finding:</b> ${e(s.currentCompetency)} <small>(${e(s.evidenceLevel||'Limited evidence')})</small></p><p><b>Specific focus:</b> ${e(s.gap)}</p>${s.subskillsNeedingWork?.length?`<p><b>Subskills to practise:</b> ${e(s.subskillsNeedingWork.join(', '))}</p>`:''}${s.subskillsNotTested?.length?`<p><b>Not covered by the questions:</b> ${e(s.subskillsNotTested.join(', '))}</p>`:''}<b>What to do</b>${list(s.actions)}<p><b>Practical assignment:</b> ${e(s.practiceTask)}</p><p><b>Evidence of improvement:</b> ${e(s.successIndicator)}</p>${learn(s.learning)}</section>`).join('');
+ const extras=(report.additionalSkills||[]).map(s=>`<section style="border-top:1px solid #e5e8f0;padding:14px 0"><h3>${e(s.name)} — Not tested</h3><p><b>Expected:</b> ${e(s.expectation)}</p><p><b>Suggested development:</b> ${e(s.nextStep)}</p><p><b>Validate by:</b> ${e(s.howToVerify)}</p>${learn(s.learning)}</section>`).join('');
+ const plan=(report.actionPlan||[]).map(s=>`<section><h3 style="color:#5535d4">${e(s.period)} — ${e(s.focus)}</h3>${list(s.actions)}</section>`).join('');
+ const intro=`<h1 style="color:#17213d;margin:0 0 4px">Career Competency &amp; Development Report</h1><p style="color:#6847e8;font-weight:700">Career Guide for Professionals · by AI Early Career Guide</p><p><b>Target role:</b> ${e(report.targetRole)}</p><p>${e(report.summary)}</p>`;
+ return `<!doctype html><html><head><meta charset="utf-8"></head><body style="font:15px/1.6 Arial,sans-serif;color:#17213d;max-width:780px;margin:0 auto;padding:26px;background:#fff">${intro}<h2 style="color:#17213d">Essential competency overview</h2><p>${e(report.coverage?.assessed??'?')} of ${e(report.coverage?.total??'?')} essential skills fully assessed. All results reflect brief, unproctored test performance.</p><table role="presentation" style="border-collapse:collapse;width:100%"><thead style="background:#f0ebff"><tr><th align="left" style="padding:9px">Skill</th><th align="left" style="padding:9px">Current finding</th><th align="left" style="padding:9px">Priority</th></tr></thead><tbody>${table}</tbody></table>${report.priorities?.length?`<h3>Your immediate priorities</h3>${list(report.priorities.map(s=>s.name+': '+s.firstAction))}`:''}<h2>Each essential skill: gaps and development</h2>${skills||'<p>Insufficient assessment evidence.</p>'}<h2>Other required skills — Not tested</h2>${extras||'<p>No additional skills identified.</p>'}<h2>Personalised 30 / 60 / 90-day plan</h2>${plan}<h2>Progress and reassessment</h2>${list((report.progressChecklist||[]).map(c=>c.skill+': '+c.deliverable+'; Evidence: '+c.evidence))}<hr><small>Learning-resource catalogue reviewed ${e(report.learningCatalogueReviewed||'on publication')}. Check fees, provider availability and eligibility before enrolment. This unproctored assessment does not verify workplace proficiency or guarantee employment. Your complete PDF report is attached.</small></body></html>`;
 }
 // Firestore lease + Resend idempotency key avoid duplicate sends on retries.
 export async function sendReportEmail(ref){
@@ -83,7 +90,7 @@ export async function sendReportEmail(ref){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
   let response,body;
   try{
-   response=await fetch('https://api.resend.com/emails',{method:'POST',signal:controller.signal,headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json','Idempotency-Key':`career-report-${reserved.sessionId}`},body:JSON.stringify({from:process.env.REPORT_FROM_EMAIL,to:[reserved.to],subject:'Your AI Early Career Guide — Professional Assessment Report',html:receiptHtml(reserved.report)})});
+   response=await fetch('https://api.resend.com/emails',{method:'POST',signal:controller.signal,headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json','Idempotency-Key':`career-report-${reserved.sessionId}`},body:JSON.stringify({from:process.env.REPORT_FROM_EMAIL,to:[reserved.to],subject:'Your Career Competency & Development Report — PDF attached',html:receiptHtml(reserved.report),attachments:[{filename:'career-competency-development-report.pdf',content:buildReportPdf(reserved.report).toString('base64'),content_type:'application/pdf'}]})});
    body=await response.json();
   }finally{clearTimeout(timer);}
   if(!response.ok||!body?.id){console.error('Resend error status',response.status,body?.name||'');throw new ApiError(502,'Report email could not be sent. You can retry from the report page.');}

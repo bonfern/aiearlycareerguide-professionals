@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {db,authorize,ApiError,output,handleError,postOnly} from './_lib/store.js';
 import {competencyProgress} from './_lib/interview-logic.js';
 import {generateReport} from './_lib/report.js';
+import {validateLearningPreferences} from './_lib/learning-catalog.js';
 import {sendReportEmail} from './_lib/commerce.js';
 
 export default async function handler(req,res){
@@ -9,6 +10,7 @@ export default async function handler(req,res){
   let ref,leaseId;
   try{
     ({ref}=await authorize(req));
+    let preferences;try{preferences=validateLearningPreferences(req.body?.learningPreferences);}catch{throw new ApiError(400,'Select valid learning preferences before generating your report.');}
     const state=await db().runTransaction(async tx=>{
       const snap=await tx.get(ref),s=snap.data();
       if(!s)throw new ApiError(401,'Assessment session not found.');
@@ -18,19 +20,19 @@ export default async function handler(req,res){
       if(s.reportLease?.until>Date.now())throw new ApiError(409,'Your report is already being generated. Please wait and try again.');
       leaseId=crypto.randomUUID();
       tx.update(ref,{reportLease:{id:leaseId,until:Date.now()+175000},reportCallsUsed:(s.reportCallsUsed||0)+1,updatedAt:new Date()});
-      return {kind:'generate',paid:Boolean(s.paid),profile:s.profile,history:s.history,blueprint:s.blueprint,untestedSkills:s.untestedSkills||[],targetRole:s.targetRole||s.profile.targetJobTitle||s.profile.careerObjective};
+      return {kind:'generate',paid:Boolean(s.paid),profile:s.profile,history:s.history,blueprint:s.blueprint,untestedSkills:s.untestedSkills||[],targetRole:s.targetRole||s.profile.targetJobTitle||s.profile.careerObjective,learningPreferences:preferences};
     });
     if(state.kind==='cached'){
       let emailStatus='not-applicable';
       if(state.paid)try{emailStatus=(await sendReportEmail(ref)).status;}catch(e){emailStatus='pending';}
       return output(res,200,{report:state.report,generatedAt:state.generatedAt,cached:true,emailStatus});
     }
-    const report=await generateReport(state.profile,state.history,state.blueprint,state.untestedSkills,state.targetRole);
+    const report=await generateReport(state.profile,state.history,state.blueprint,state.untestedSkills,state.targetRole,state.learningPreferences);
     const saved=await db().runTransaction(async tx=>{
       const snap=await tx.get(ref),s=snap.data();
       if(!s||s.reportLease?.id!==leaseId)throw new ApiError(409,'Report generation was superseded. Please refresh.');
       const generatedAt=new Date();
-      tx.update(ref,{report,reportGeneratedAt:generatedAt,reportLease:null,updatedAt:generatedAt});
+      tx.update(ref,{report,learningPreferences:state.learningPreferences,reportGeneratedAt:generatedAt,reportLease:null,updatedAt:generatedAt});
       return {report,generatedAt:generatedAt.toISOString(),cached:false};
     });
     let emailStatus='not-applicable';

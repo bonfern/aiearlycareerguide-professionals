@@ -10,9 +10,9 @@ test('loading state is explicit about one-time preparation and fast follow-ups',
  new Script(html.match(/<script>([\s\S]*?)<\/script>/)[1]);
 });
 test('report UI shows competency, specific gap, untested requirements and action plan without answer recap',()=>{
- assert.match(html,/Current competency \(based on this test\)/);
- assert.match(html,/Other required skills — not tested/);
- assert.match(html,/30 \/ 60 \/ 90-day development plan/);
+ assert.match(html,/Your current test-based finding:/);
+ assert.match(html,/Other required skills — not assessed/);
+ assert.match(html,/personalised 30 \/ 60 \/ 90-day plan/);
 });
 test('bank generator and next-question endpoints keep answers and rationales private',()=>{
  const endpoint=readFileSync(new URL('../api/next-question.js',import.meta.url),'utf8');
