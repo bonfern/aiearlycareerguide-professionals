@@ -32,6 +32,13 @@ body{background:#fff}p{color:#526078}main{max-width:1200px;margin:0 auto;padding
 @media(max-width:900px){.brand-nav{display:none}.hero,.guided-section,.pricing-cta{grid-template-columns:1fr;gap:25px}.hero{padding-top:40px}.hero-photo{height:350px}.guided-image{order:2}.feature-grid{grid-template-columns:1fr}.pricing-cta{padding:25px}.price-box{max-width:350px}.footer-inner{flex-direction:column}.footer-inner nav{justify-content:flex-start}}
 @media(max-width:560px){.brand-header{padding:0 14px}.brand-header-inner{min-height:65px;gap:8px}.brand-mark{width:35px;height:35px;flex-basis:35px}.brand-title strong{font-size:12px}.brand-title small{font-size:8px}.brand-nav-cta{padding:10px;font-size:12px}main{padding:0 16px}.hero{gap:24px;padding:29px 0 35px}.hero-copy h1{font-size:36px}.hero-copy p{font-size:15px}.hero-photo{height:240px}.hero-note{left:4px;bottom:-14px;padding:10px}.trust-strip{margin:30px -16px 0}.feature-section{padding:45px 0}.feature-card{padding:22px}.guided-section{padding:25px 0 45px}.guided-image img{height:240px}.panel{margin:20px auto;padding:22px}.footer-inner nav{gap:15px}}
 @media print{.brand-header,.professional-footer,.landing-shell{display:none!important}main{max-width:none;margin:0}#report{max-width:none}}
+
+/* Clear, accessible checkout steps; the rest of the responsive brand stays unchanged. */
+.checkout-step-title{font-size:17px;font-weight:800;color:#182a4f;margin:23px 0 10px;border-top:1px solid #e8eaf5;padding-top:18px}
+#existingAccessBox{background:#f2efff;border:1px solid #e0d9fc;margin:16px 0 20px}
+#existingAccessBox .btn{margin:5px 10px 5px 0}
+.checkout-actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center}.checkout-actions .btn{margin:6px 0}
+#checkoutConsent{accent-color:#6847e8}
 </style>
 <link rel="stylesheet" href="professional-site.css">
 </head>
@@ -56,15 +63,29 @@ body{background:#fff}p{color:#526078}main{max-width:1200px;margin:0 auto;padding
 <div class="tester-actions"><button id="previewEntryBtn" class="linkbtn" type="button">Private tester access</button><button id="resumeBtn" class="btn secondary hidden" type="button">Resume My Saved Assessment →</button></div>
 <div id="previousSessions" class="notice hidden"><strong>Previous assessments on this browser</strong><p class="hint">Reopen earlier assessments while access is valid. Save reports as PDF for your own records.</p><div id="previousSessionList"></div></div><div id="resumeError" class="error" aria-live="polite"></div>
 </section>
-<section id="checkout" class="panel checkout-panel hidden"><div class="eyebrow">Secure assessment access</div><h2>Start your professional assessment</h2><p>Enter your email, apply a coupon if you have one, and complete payment. No password or OTP is required. We use your email to deliver the career report.</p>
-<label for="checkoutEmail">Email address for your report</label><input type="email" id="checkoutEmail" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
-<label for="couponCode">Coupon code (optional)</label><div class="row" style="align-items:flex-end"><div style="flex:1;min-width:180px"><input id="couponCode" maxlength="30" placeholder="Enter coupon code" autocomplete="off"></div><button type="button" class="btn secondary" id="applyCoupon">Apply coupon</button></div>
-<div class="notice" id="priceDetails"><strong>Assessment: ₹499</strong><p>Discount: ₹0 · Amount payable: ₹499</p></div>
-<label class="choice" for="checkoutConsent"><input type="checkbox" id="checkoutConsent"><span>I agree to the <a class="policy-link" href="terms.html" target="_blank" rel="noopener">Terms</a> and <a class="policy-link" href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>. My profile and answers will be processed to generate the report; my email will be used for delivery and payment-related support.</span></label><p class="policy-small">See our <a href="refund.html" target="_blank" rel="noopener">Refund Policy</a> and <a href="contact.html" target="_blank" rel="noopener">Contact</a> before payment.</p>
-<div id="checkoutError" class="error" aria-live="polite"></div><p class="hint" id="checkoutStatus" aria-live="polite"></p>
-<button id="checkoutBack" type="button" class="btn secondary">← Back</button><button type="button" id="payBtn" class="btn">Pay ₹499 &amp; Continue →</button><button type="button" id="recoverPaymentBtn" class="btn secondary hidden">Check Previous Payment</button>
-<p class="hint">Do not make another payment if your account was debited but checkout failed. Use Check Previous Payment, then contact support if the payment remains unresolved.</p></section>
-<section id="profile" class="panel hidden"><div class="eyebrow">Professional profile</div><div class="row"><h2 id="stepTitle"></h2><span id="sectionLabel" class="tag"></span></div><div class="progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><span id="bar"></span></div><form id="profileForm"><label id="question" for="answer"></label><p id="hint" class="hint"></p><div id="field"></div><div id="error" class="error" aria-live="polite"></div><div class="footeractions"><button type="button" class="btn secondary" id="backBtn">← Back</button><button type="submit" class="btn" id="nextBtn">Continue →</button></div></form></section>
+<section id="checkout" class="panel checkout-panel hidden">
+ <div class="eyebrow">Secure, password-free assessment</div><h2>Start or resume your career assessment</h2>
+ <p>Enter your email first. If you already paid or used a complimentary coupon, continue your unfinished assessment without paying again.</p>
+ <label for="checkoutEmail">Your email address</label><input type="email" id="checkoutEmail" autocomplete="email" maxlength="254" placeholder="you@example.com" required>
+ <div class="notice" id="existingAccessBox">
+  <strong>Already started an assessment?</strong><p class="hint">On this browser you can continue immediately. Otherwise, we'll email a secure link to the address used at checkout.</p>
+  <button class="btn secondary hidden" id="continueExistingBtn" type="button">Continue My Assessment →</button>
+  <button class="btn secondary" id="requestAccessLinkBtn" type="button">Email Me My Link</button>
+  <p class="hint" id="recoveryStatus" aria-live="polite"></p>
+ </div>
+ <div class="checkout-step-title">1. Review and accept</div>
+ <label class="choice" for="checkoutConsent"><input type="checkbox" id="checkoutConsent" required><span>I agree to the <a class="policy-link" href="terms.html" target="_blank" rel="noopener">Terms &amp; Conditions</a> and <a class="policy-link" href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>. I consent to the processing of my profile and answers to generate my assessment. My email will be used for payment confirmation, a secure assessment link and my final report.</span></label>
+ <p class="policy-small">Review our <a href="refund.html" target="_blank" rel="noopener">Refund Policy</a> and <a href="contact.html" target="_blank" rel="noopener">Contact Details</a> before payment.</p>
+ <div class="checkout-step-title">2. Apply a coupon (optional)</div>
+ <p class="hint">Enter a coupon after accepting the terms. If you don't have a coupon, continue directly to payment.</p>
+ <label for="couponCode">Coupon code</label><div class="row" style="align-items:flex-end"><div style="flex:1;min-width:180px"><input id="couponCode" maxlength="30" placeholder="Enter coupon code" autocomplete="off"></div><button type="button" class="btn secondary" id="applyCoupon" disabled>Apply Coupon</button></div>
+ <div class="notice" id="priceDetails"><strong>Assessment: ₹499</strong><p>Discount: ₹0 · Amount payable: ₹499</p></div>
+ <div class="checkout-step-title">3. Complete checkout</div>
+ <div id="checkoutError" class="error" aria-live="polite"></div><p class="hint" id="checkoutStatus" aria-live="polite"></p>
+ <div class="checkout-actions"><button id="checkoutBack" type="button" class="btn secondary">← Back</button><button type="button" id="payBtn" class="btn" disabled>Pay ₹499 &amp; Start Assessment →</button><button type="button" id="recoverPaymentBtn" class="btn secondary hidden">Check Previous Payment</button></div>
+ <p class="hint">If your bank account was debited, never pay again before checking the previous payment. We email the assessment link once payment is confirmed.</p>
+</section>
+<section id="profile" class="panel hidden"><div id="accessEmailNotice" class="notice hidden" role="status"></div><div class="eyebrow">Professional profile</div><div class="row"><h2 id="stepTitle"></h2><span id="sectionLabel" class="tag"></span></div><div class="progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><span id="bar"></span></div><form id="profileForm"><label id="question" for="answer"></label><p id="hint" class="hint"></p><div id="field"></div><div id="error" class="error" aria-live="polite"></div><div class="footeractions"><button type="button" class="btn secondary" id="backBtn">← Back</button><button type="submit" class="btn" id="nextBtn">Continue →</button></div></form></section>
 <section id="review" class="panel hidden"><div class="eyebrow">Profile review</div><h2>Your professional profile</h2><p>Review your answers. Select <strong>Edit</strong> beside any item to change it without starting again.</p><div id="answers"></div><button class="btn secondary" id="reviewBack">← Back to profile</button><button class="btn secondary hidden" id="interviewBtn">Legacy offline preview →</button><button class="btn" id="liveStartBtn">Start live AI interview →</button></section>
 <section id="interview" class="panel hidden"><div class="eyebrow">Interview preview · Preset questions, not live AI</div><div class="row"><h2 id="interviewTitle"></h2><span class="tag" id="interviewCategory"></span></div><div class="progress" role="progressbar" aria-label="Interview completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="interviewProgress"><span id="interviewBar"></span></div><h3 id="interviewQuestion"></h3><p id="interviewHint" class="hint"></p><div id="interviewField"></div><div id="interviewError" class="error" aria-live="polite"></div><p class="hint">Offline preview: preset questions to try the format. The live interview adapts to your career stage and answers.</p><div class="footeractions"><button class="btn secondary" id="interviewBack" type="button">← Back</button><button class="btn" id="interviewNext" type="button">Continue →</button></div></section>
 <section id="liveSetup" class="panel hidden"><div class="eyebrow">Secure development preview</div><h2>Live adaptive AI interview</h2><p>We assess the most indispensable technical and behavioural skills for your target role. Two short multiple-choice questions are prepared for each skill, with a third only when the answers are mixed. This is a development preview, not the paid assessment.</p><div class="notice">Private beta: your answers are stored in Firebase for this test and shared with OpenAI to generate questions. Your preview access expires after 7 days. Records remain until deleted by you or removed by the administrator; the optional 30-day Firestore deletion rule must be enabled separately. Please avoid uploading confidential employer information.</div><label for="previewCode">Private preview access code</label><input id="previewCode" type="password" autocomplete="off" placeholder="Code set in your Vercel environment"><p class="hint">Enter the private tester code from the project owner. Never enter an OpenAI API key here.</p><label class="choice" for="consent" style="margin-top:18px"><input id="consent" type="checkbox"><span>I understand my profile and interview answers are stored for this private beta and shared with OpenAI to generate questions.</span></label><div class="error" id="liveSetupError" aria-live="polite"></div><button id="liveSetupBack" class="btn secondary" type="button">← Back to profile</button><button id="liveBegin" class="btn" type="button">Begin live interview →</button></section>
@@ -219,7 +240,7 @@ function download(){
  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='career-professional-assessment.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)
 }
 $('headerStart').addEventListener('click',()=>{$('startBtn').click()});$('startFromPricing').addEventListener('click',()=>{$('startBtn').click()});
-$('startBtn').addEventListener('click',()=>{if(liveSession){startFreshAssessment();return;}if(paidPurchase){show('profile');render();return;}show('checkout')});$('previewEntryBtn').addEventListener('click',()=>{privatePreview=true;show('profile');render()});$('profileForm').addEventListener('submit',save);$('backBtn').addEventListener('click',back);$('reviewBack').addEventListener('click',()=>{step=visibleIndices().at(-1);fromReview=false;render();show('profile')});$('interviewBtn').addEventListener('click',()=>{assessmentMode='demo';startInterview()});$('liveStartBtn').addEventListener('click',()=>{assessmentMode='live';if(paidPurchase&&!privatePreview){beginPaidLive();return;}$('previewCode').disabled=Boolean(liveSession);$('previewCode').placeholder=liveSession?'Existing session will be resumed':'Private code from the project owner';$('consent').checked=Boolean(liveSession);show('liveSetup')});$('interviewBack').addEventListener('click',interviewBack);$('interviewNext').addEventListener('click',nextInterview);$('downloadBtn').addEventListener('click',download);$('restartBtn').addEventListener('click',startFreshAssessment);
+$('startBtn').addEventListener('click',()=>{if(liveSession){show('welcome');resumeLive();return;}if(paidPurchase){show('profile');render();return;}show('checkout');syncCheckout();});$('previewEntryBtn').addEventListener('click',()=>{privatePreview=true;show('profile');render()});$('profileForm').addEventListener('submit',save);$('backBtn').addEventListener('click',back);$('reviewBack').addEventListener('click',()=>{step=visibleIndices().at(-1);fromReview=false;render();show('profile')});$('interviewBtn').addEventListener('click',()=>{assessmentMode='demo';startInterview()});$('liveStartBtn').addEventListener('click',()=>{assessmentMode='live';if(paidPurchase&&!privatePreview){beginPaidLive();return;}$('previewCode').disabled=Boolean(liveSession);$('previewCode').placeholder=liveSession?'Existing session will be resumed':'Private code from the project owner';$('consent').checked=Boolean(liveSession);show('liveSetup')});$('interviewBack').addEventListener('click',interviewBack);$('interviewNext').addEventListener('click',nextInterview);$('downloadBtn').addEventListener('click',download);$('restartBtn').addEventListener('click',startFreshAssessment);
 
 // ── LIVE PRIVATE BETA: server owns history and current question ──
 const SESSION_KEY='careerProfessionalsBetaV1';
@@ -521,48 +542,123 @@ function downloadCareerReport(){
  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='career-professionals-report.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
 
-// ── PAYMENT-FIRST CUSTOMER JOURNEY (no password, no email link) ──
+// ── PAYMENT + EMAIL RESUME (no passwords or duplicate charges) ──
 function rupees(paise){return '₹'+(Number(paise)/100).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});}
-function setCheckoutBusy(b){checkoutBusy=b;for(const id of ['payBtn','applyCoupon','recoverPaymentBtn'])$(id).disabled=b;if(b)$('payBtn').textContent='Processing securely…';else if(pendingCheckout)$('payBtn').textContent='Reopen checkout →';else if(lastQuote)$('payBtn').textContent=lastQuote.amount===0?'Redeem coupon & Continue →':`Pay ${rupees(lastQuote.amount)} & Continue →`;else $('payBtn').textContent='Pay ₹499 & Continue →';}
-let lastQuote={amount:49900,discount:0};
-function setQuote(quote){lastQuote=quote;$('priceDetails').replaceChildren();const strong=document.createElement('strong');strong.textContent='Assessment: ₹499';const info=document.createElement('p');info.textContent=`Discount: ${rupees(quote.discount)} · Amount payable: ${rupees(quote.amount)}`;$('priceDetails').append(strong,info);$('payBtn').textContent=quote.amount===0?'Redeem coupon & Continue →':`Pay ${rupees(quote.amount)} & Continue →`;}
-async function checkoutRequest(route,body){const res=await fetch(`${apiPrefix}/${route}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'});let out;try{out=await res.json();}catch{throw Error('Could not read the checkout response. Please try again.');}if(!res.ok)throw Error(out.error||'Checkout temporarily unavailable.');return out;}
-async function applyCoupon(){if(checkoutBusy)return;setCheckoutBusy(true);$('checkoutError').textContent='';try{const code=$('couponCode').value.trim();const quote=await checkoutRequest('create-order?mode=quote',{couponCode:code});setQuote(quote);$('checkoutStatus').textContent=code?'Coupon applied. The final amount will be confirmed before checkout.':'Standard assessment price.';}catch(e){$('checkoutError').textContent=e.message;setQuote({amount:49900,discount:0});}finally{setCheckoutBusy(false);}}
+let lastQuote={amount:49900,discount:0,couponCode:null},appliedCouponCode='',recoverBusy=false;
+const enteredEmail=()=>String($('checkoutEmail').value||'').trim().toLowerCase();
+const validCheckoutEmail=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(enteredEmail());
+function sameBrowserPurchase(){return paidPurchase&&paidPurchase.email===enteredEmail();}
+function setCheckoutBusy(b){
+ checkoutBusy=b;syncCheckout();
+ if(b)$('payBtn').textContent='Processing securely…';
+ else if(pendingCheckout)$('payBtn').textContent='Reopen checkout →';
+ else $('payBtn').textContent=lastQuote.amount===0?'Confirm Complimentary Access →':`Pay ${rupees(lastQuote.amount)} & Start Assessment →`;
+}
+function setQuote(quote){
+ lastQuote=quote;appliedCouponCode=quote.couponCode||'';
+ $('priceDetails').replaceChildren();
+ const title=document.createElement('strong');title.textContent='Assessment: ₹499';
+ const info=document.createElement('p');info.textContent=`Discount: ${rupees(quote.discount)} · Amount payable: ${rupees(quote.amount)}`;
+ $('priceDetails').append(title,info);syncCheckout();
+}
+function syncCheckout(){
+ const consent=$('checkoutConsent').checked,validEmail=validCheckoutEmail();
+ const typed=$('couponCode').value.trim().toUpperCase();
+ const unapplied=typed!==appliedCouponCode;
+ $('continueExistingBtn').classList.toggle('hidden',!sameBrowserPurchase());
+ $('applyCoupon').disabled=checkoutBusy||!consent||!validEmail||!typed;
+ $('payBtn').disabled=checkoutBusy||!consent||!validEmail||(typed.length>0&&unapplied);
+ if(!checkoutBusy&&!pendingCheckout)$('payBtn').textContent=lastQuote.amount===0?'Confirm Complimentary Access →':`Pay ${rupees(lastQuote.amount)} & Start Assessment →`;
+}
+async function checkoutRequest(route,body){
+ const res=await fetch(`${apiPrefix}/${route}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'});
+ let out;try{out=await res.json();}catch{throw Error('Could not read the checkout response. Please try again.');}
+ if(!res.ok)throw Error(out.error||'Checkout temporarily unavailable.');return out;
+}
+function resetQuote(){setQuote({amount:49900,discount:0,couponCode:null});}
+async function applyCoupon(){
+ if(checkoutBusy)return;
+ if(!$('checkoutConsent').checked){$('checkoutError').textContent='Please agree to the Terms and Privacy Policy before applying a coupon.';$('checkoutConsent').focus();return;}
+ if(!validCheckoutEmail()){$('checkoutError').textContent='Enter your email address first.';$('checkoutEmail').focus();return;}
+ setCheckoutBusy(true);$('checkoutError').textContent='';
+ try{
+  const code=$('couponCode').value.trim();
+  const quote=await checkoutRequest('create-order?mode=quote',{email:enteredEmail(),couponCode:code,consent:true});
+  setQuote(quote);
+  $('checkoutStatus').textContent=quote.amount===0?'Coupon applied. Your amount is ₹0. Next, confirm complimentary access.':`Coupon applied. Next, make your payment of ${rupees(quote.amount)}.`;
+  $('payBtn').focus();
+ }catch(e){$('checkoutError').textContent=e.message;resetQuote();}finally{setCheckoutBusy(false);}
+}
 function recordPending(order){pendingCheckout=order;localStorage.setItem(PENDING_KEY,JSON.stringify(order));$('recoverPaymentBtn').classList.remove('hidden');}
-function completePayment(order){paidPurchase={orderId:order.orderId,checkoutNonce:order.checkoutNonce,email:order.email};localStorage.setItem(PURCHASE_KEY,JSON.stringify(paidPurchase));pendingCheckout=null;localStorage.removeItem(PENDING_KEY);$('recoverPaymentBtn').classList.add('hidden');privatePreview=false;setCheckoutBusy(false);show('profile');render();}
-async function verifyPayment(order,payment={}){const result=await checkoutRequest('verify-payment',{orderId:order.orderId,checkoutNonce:order.checkoutNonce,...payment});if(!result.paid){$('checkoutStatus').textContent=result.message||'Payment is processing. Please check again shortly.';return false;}completePayment(order);return true;}
-async function recoverPayment(){if(!pendingCheckout)return;setCheckoutBusy(true);$('checkoutError').textContent='';$('checkoutStatus').textContent='Checking your previous payment securely…';try{await verifyPayment(pendingCheckout);}catch(e){$('checkoutError').textContent=e.message;}finally{setCheckoutBusy(false);}}
-async function loadRazorpayCheckout(){if(window.Razorpay)return;await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://checkout.razorpay.com/v1/checkout.js';s.onload=resolve;s.onerror=()=>reject(Error('Razorpay checkout could not load. Please check your connection.'));document.head.appendChild(s);});if(!window.Razorpay)throw Error('Checkout is unavailable. Please retry.');}
+function showConfirmationNotice(status){
+ const node=$('accessEmailNotice');
+ node.classList.remove('hidden');
+ node.textContent=status==='sent'?'Your payment/complimentary access is confirmed. We have sent a private assessment link to your email address.':
+ 'Your access is confirmed. If the email has not arrived yet, return to checkout and use Email Me My Link.';
+}
+function completePayment(order,status='pending'){
+ paidPurchase={orderId:order.orderId,checkoutNonce:order.checkoutNonce,email:order.email};
+ localStorage.setItem(PURCHASE_KEY,JSON.stringify(paidPurchase));
+ pendingCheckout=null;localStorage.removeItem(PENDING_KEY);$('recoverPaymentBtn').classList.add('hidden');
+ privatePreview=false;setCheckoutBusy(false);showConfirmationNotice(status);show('profile');render();
+}
+async function verifyPayment(order,payment={}){
+ const result=await checkoutRequest('verify-payment',{orderId:order.orderId,checkoutNonce:order.checkoutNonce,...payment});
+ if(!result.paid){$('checkoutStatus').textContent=result.message||'Payment is processing. Please check again shortly.';return false;}
+ completePayment(order,result.emailStatus);return true;
+}
+async function recoverPayment(){
+ if(!pendingCheckout)return;
+ setCheckoutBusy(true);$('checkoutError').textContent='';$('checkoutStatus').textContent='Checking your previous payment securely…';
+ try{await verifyPayment(pendingCheckout);}catch(e){$('checkoutError').textContent=e.message;}finally{setCheckoutBusy(false);}
+}
+async function requestAccessLink(){
+ if(recoverBusy)return;
+ if(!validCheckoutEmail()){$('recoveryStatus').textContent='Enter a valid email address first.';$('checkoutEmail').focus();return;}
+ recoverBusy=true;$('requestAccessLinkBtn').disabled=true;$('recoveryStatus').textContent='Checking and emailing your access link…';
+ try{const response=await checkoutRequest('create-order?mode=recover',{email:enteredEmail()});$('recoveryStatus').textContent=response.message;}
+ catch(e){$('recoveryStatus').textContent=e.message;}
+ finally{recoverBusy=false;$('requestAccessLinkBtn').disabled=false;}
+}
+async function continueExisting(){
+ if(!sameBrowserPurchase())return;
+ if(liveSession?.paid){show('welcome');await resumeLive();return;}
+ show('profile');render();
+}
+async function loadRazorpayCheckout(){
+ if(window.Razorpay)return;
+ await new Promise((resolve,reject)=>{const s=document.createElement('script');s.src='https://checkout.razorpay.com/v1/checkout.js';s.onload=resolve;s.onerror=()=>reject(Error('Razorpay checkout could not load. Check your connection.'));document.head.appendChild(s);});
+ if(!window.Razorpay)throw Error('Checkout is unavailable. Please retry.');
+}
 async function openRazorpayOrder(order){
- await loadRazorpayCheckout();$('checkoutStatus').textContent='Complete payment in the Razorpay window.';
+ await loadRazorpayCheckout();$('checkoutStatus').textContent='Complete payment in the secure Razorpay window.';
  let paymentFailed=false;
- const modal=new window.Razorpay({key:order.razorpayKeyId,amount:order.amount,currency:'INR',order_id:order.orderId,name:'AI Early Career Guide',description:'Career Professionals Assessment',prefill:{email:order.email},handler:async result=>{
-   setCheckoutBusy(true);$('checkoutStatus').textContent='Verifying your payment…';
-   try{await verifyPayment(order,result);}catch(e){$('checkoutError').textContent=e.message+' If you paid, select Check Previous Payment — do not pay again.';}finally{setCheckoutBusy(false);}
- },modal:{ondismiss:()=>{
-   $('checkoutStatus').textContent=paymentFailed
-     ?'Payment not confirmed. If money was debited, do not retry. Select Check Previous Payment and contact Razorpay support if needed.'
-     :'Checkout closed. Check Previous Payment before starting another transaction.';
-   $('recoverPaymentBtn').classList.remove('hidden');
-   setCheckoutBusy(false);
- }},theme:{color:'#1c59ac'}});
+ const modal=new window.Razorpay({key:order.razorpayKeyId,amount:order.amount,currency:'INR',order_id:order.orderId,
+  name:'Career Guide for Professionals',description:'Role-specific Career Assessment',prefill:{email:order.email},
+  handler:async result=>{
+   setCheckoutBusy(true);$('checkoutStatus').textContent='Verifying payment securely…';
+   try{await verifyPayment(order,result);}catch(e){$('checkoutError').textContent=e.message+' If your bank was debited, check the previous payment. Do not pay again.';}
+   finally{setCheckoutBusy(false);}
+  },modal:{ondismiss:()=>{
+   $('checkoutStatus').textContent=paymentFailed?'Payment was not confirmed. Check the earlier payment before retrying.':'Checkout closed. If you paid, check the previous payment before creating another order.';
+   $('recoverPaymentBtn').classList.remove('hidden');setCheckoutBusy(false);
+  }},theme:{color:'#6847e8'}});
  modal.on('payment.failed',response=>{
-   paymentFailed=true;
-   const reason=response?.error?.description;
-   $('checkoutError').textContent=(reason?reason+'. ':'Payment could not be confirmed. ')+'If money was debited, do not pay again. Close the Razorpay window and select Check Previous Payment.';
-   $('checkoutStatus').textContent='Your payment has not been verified. Check its status before attempting another payment.';
-   $('recoverPaymentBtn').classList.remove('hidden');
-   setCheckoutBusy(false);
- });
- modal.open();
+  paymentFailed=true;$('checkoutError').textContent=(response?.error?.description||'Payment could not be confirmed')+'. If money was debited, do not pay again. Check Previous Payment.';
+  $('recoverPaymentBtn').classList.remove('hidden');setCheckoutBusy(false);
+ });modal.open();
 }
 async function payAndContinue(){
  if(checkoutBusy)return;
- if(pendingCheckout){setCheckoutBusy(true);$('checkoutError').textContent='';try{await openRazorpayOrder(pendingCheckout);}catch(e){$('checkoutError').textContent=e.message;setCheckoutBusy(false);}return;}
- if(!$('checkoutConsent').checked){$('checkoutError').textContent='Please confirm consent to proceed.';return;}
- setCheckoutBusy(true);$('checkoutError').textContent='';$('checkoutStatus').textContent='Creating a secure checkout…';
+ if(sameBrowserPurchase()){await continueExisting();return;}
+ if(pendingCheckout){setCheckoutBusy(true);try{await openRazorpayOrder(pendingCheckout);}catch(e){$('checkoutError').textContent=e.message;setCheckoutBusy(false);}return;}
+ if(!validCheckoutEmail()){$('checkoutError').textContent='Enter a valid email address.';$('checkoutEmail').focus();return;}
+ if(!$('checkoutConsent').checked){$('checkoutError').textContent='Accept the Terms and Privacy Policy before continuing.';$('checkoutConsent').focus();return;}
+ const typed=$('couponCode').value.trim().toUpperCase();
+ if(typed!==appliedCouponCode){$('checkoutError').textContent='Please apply your coupon before continuing.';return;}
+ setCheckoutBusy(true);$('checkoutError').textContent='';$('checkoutStatus').textContent='Creating your secure checkout…';
  try{
-  const order=await checkoutRequest('create-order',{email:$('checkoutEmail').value,couponCode:$('couponCode').value,consent:true});
+  const order=await checkoutRequest('create-order',{email:enteredEmail(),couponCode:typed,consent:true});
   if(!order.requiresPayment){await verifyPayment(order);return;}
   recordPending(order);await openRazorpayOrder(order);
  }catch(e){$('checkoutError').textContent=e.message;setCheckoutBusy(false);}
@@ -573,26 +669,48 @@ async function beginPaidLive(){
  try{
   if(!liveSession){const profile=profileForAPI();const session=await apiCall('start',{paidOrder:{orderId:paidPurchase.orderId,checkoutNonce:paidPurchase.checkoutNonce},profile},true);savedServerProfile=profile;storeSession({...session,email:paidPurchase.email});}
   await fetchNext();
- }catch(e){show('review');$('resumeError').textContent=e.message;alert('Could not start your paid assessment. Your verified purchase is saved in this browser. Please retry.');}
+ }catch(e){show('review');$('resumeError').textContent=e.message;alert('Could not start your assessment. Your verified purchase is saved in this browser. Please retry.');}
  finally{setLiveBusy(false);}
 }
 function showReportEmailStatus(status){
  const node=$('emailStatusNote'),retry=$('emailRetryBtn');retry.classList.add('hidden');node.classList.add('hidden');
- if(!liveSession?.paid)return;
- node.classList.remove('hidden');
- if(status==='sent')node.textContent='Your full career report has been emailed to your payment email address.';
- else{node.textContent=status==='sending'?'Your report email is being processed.':'Your report is ready, but the email has not been confirmed. You can retry sending it below.';retry.classList.remove('hidden');}
+ if(!liveSession?.paid)return;node.classList.remove('hidden');
+ if(status==='sent')node.textContent='Your full report has been emailed to your payment email address.';
+ else{node.textContent=status==='sending'?'Your report email is being processed.':'Your report is ready but the email is not confirmed. Retry below.';retry.classList.remove('hidden');}
 }
 $('emailRetryBtn').addEventListener('click',async()=>{const btn=$('emailRetryBtn');btn.disabled=true;try{const result=await apiCall('send-report');showReportEmailStatus(result.status);}catch(e){$('emailStatusNote').textContent=e.message;}finally{btn.disabled=false;}});
+$('checkoutEmail').addEventListener('input',()=>{resetQuote();syncCheckout();$('checkoutError').textContent='';});
+$('couponCode').addEventListener('input',()=>{resetQuote();syncCheckout();});
+$('checkoutConsent').addEventListener('change',()=>{syncCheckout();$('checkoutError').textContent='';});
 $('applyCoupon').addEventListener('click',applyCoupon);
 $('payBtn').addEventListener('click',payAndContinue);
+$('continueExistingBtn').addEventListener('click',continueExisting);
+$('requestAccessLinkBtn').addEventListener('click',requestAccessLink);
 $('recoverPaymentBtn').addEventListener('click',recoverPayment);
 $('checkoutBack').addEventListener('click',()=>show('welcome'));
 try{const p=JSON.parse(localStorage.getItem(PURCHASE_KEY)||'null');if(p?.orderId&&p?.checkoutNonce&&p?.email)paidPurchase=p;}catch{localStorage.removeItem(PURCHASE_KEY);}
-try{const p=JSON.parse(localStorage.getItem(PENDING_KEY)||'null');if(p?.orderId&&p?.checkoutNonce){pendingCheckout=p;$('recoverPaymentBtn').classList.remove('hidden');$('checkoutEmail').value=p.email||'';$('checkoutStatus').textContent='A previous checkout was found. Check payment before creating a new order.';}}catch{localStorage.removeItem(PENDING_KEY);}
+try{const p=JSON.parse(localStorage.getItem(PENDING_KEY)||'null');if(p?.orderId&&p?.checkoutNonce){pendingCheckout=p;$('recoverPaymentBtn').classList.remove('hidden');$('checkoutEmail').value=p.email||'';$('checkoutStatus').textContent='An earlier checkout was found. Check payment before creating a new order.';}}catch{localStorage.removeItem(PENDING_KEY);}
+try{const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||localStorage.getItem(SESSION_KEY)||'null');if(s?.sessionId&&s?.sessionToken){storeSession(s);assessmentMode='live';updateReportAvailability();}}catch{sessionStorage.removeItem(SESSION_KEY);}
+renderPreviousSessions();syncCheckout();
 
-try{const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||localStorage.getItem(SESSION_KEY)||'null');if(s&&s.sessionId&&s.sessionToken){storeSession(s);assessmentMode='live';updateReportAvailability()}}catch{sessionStorage.removeItem(SESSION_KEY)}
-renderPreviousSessions();
+// The link uses a fragment, so tokens never appear in server request URLs.
+async function redeemEmailLinkIfPresent(){
+ const match=location.hash.match(/^#access=(.+)$/);if(!match)return;
+ const token=decodeURIComponent(match[1]);history.replaceState(null,'',location.pathname+location.search);
+ $('resumeError').textContent='';
+ try{
+  const result=await apiCall('start',{accessLink:token},true);
+  paidPurchase={orderId:result.orderId,checkoutNonce:result.checkoutNonce,email:result.email};
+  localStorage.setItem(PURCHASE_KEY,JSON.stringify(paidPurchase));
+  pendingCheckout=null;localStorage.removeItem(PENDING_KEY);privatePreview=false;
+  if(result.sessionId&&result.sessionToken){
+   storeSession({sessionId:result.sessionId,sessionToken:result.sessionToken,paid:true,
+      accessExpiresAt:result.accessExpiresAt,email:result.email});
+   show('welcome');await resumeLive();
+  }else{storeSession(null);showConfirmationNotice('sent');show('profile');render();}
+ }catch(e){show('checkout');$('checkoutEmail').value='';syncCheckout();$('checkoutError').textContent=e.message+' Enter your purchase email and request a new link.';}
+}
+redeemEmailLinkIfPresent();
 </script>
 <script>
 (function(){

@@ -36,8 +36,8 @@ export function checkoutToken(orderId,nonce,secret=process.env.RAZORPAY_KEY_SECR
  if(!secret)throw new ApiError(503,'Checkout access is not configured.');
  return crypto.createHmac('sha256',secret).update(`professional-session-v1|${orderId}|${nonce}`).digest('hex');
 }
-export function verifyCheckoutProof(order,nonce){
- if(typeof nonce!=='string'||!/^[a-f0-9]{64}$/.test(nonce)||!safeEqual(order?.checkoutNonceHash,sha(nonce)))throw new ApiError(401,'Your secure checkout reference is missing or invalid.');
+export function verifyCheckoutProof(order,nonce,orderId=null){
+ if(typeof nonce!=='string'||!/^[a-f0-9]{64}$/.test(nonce)||!(safeEqual(order?.checkoutNonceHash,sha(nonce))||((orderId||order?.orderId)&&safeEqual(recoveredCheckoutProof(orderId||order.orderId),nonce))))throw new ApiError(401,'Your secure checkout reference is missing or invalid.');
 }
 export async function razorpay(path,method='GET',body=null){
  const id=process.env.RAZORPAY_KEY_ID,secret=process.env.RAZORPAY_KEY_SECRET;
@@ -94,4 +94,100 @@ export async function sendReportEmail(ref){
   if(err instanceof ApiError)throw err;
   throw new ApiError(502,'Email delivery is temporarily unavailable. Please retry from your report.');
  }
+}
+
+// Password-free access is granted only by a paid order's secret checkout proof
+// or a short-lived, one-use email link. An email address alone never grants access.
+export const ACCESS_LINK_MS=7*24*60*60*1000;
+export const ACCESS_LINK_BASE=process.env.PUBLIC_PROFESSIONAL_URL||'https://www.aiearlycareerguide.com/professionals';
+export const validOrderId=id=>typeof id==='string'&&/^(?:order_[A-Za-z0-9]+|free_[a-f0-9]{32})$/.test(id);
+export function recoveredCheckoutProof(orderId,secret=process.env.RAZORPAY_KEY_SECRET){
+ if(!validOrderId(orderId)||!secret)throw new ApiError(401,'This access link cannot be verified.');
+ return crypto.createHmac('sha256',secret).update(`career-professionals|recovered-proof-v1|${orderId}`).digest('hex');
+}
+export function createAccessLink(orderId,expiresAt=Date.now()+ACCESS_LINK_MS,secret=process.env.RAZORPAY_KEY_SECRET){
+ if(!validOrderId(orderId)||!secret)throw new ApiError(503,'Email access is not configured.');
+ const random=crypto.randomBytes(16).toString('hex');
+ const body=`${orderId}.${expiresAt}.${random}`;
+ const mac=crypto.createHmac('sha256',secret).update(`career-professionals|magic-link-v1|${body}`).digest('hex');
+ return {token:`${body}.${mac}`,tokenHash:sha(random),expiresAt};
+}
+export function parseAccessLink(token,secret=process.env.RAZORPAY_KEY_SECRET){
+ if(typeof token!=='string'||token.length>250)throw new ApiError(401,'This access link is invalid. Request a new email link.');
+ const match=token.match(/^((?:order_[A-Za-z0-9]+|free_[a-f0-9]{32}))\.(\d{13})\.([a-f0-9]{32})\.([a-f0-9]{64})$/);
+ if(!match||!secret)throw new ApiError(401,'This access link is invalid. Request a new email link.');
+ const [,orderId,expires,random,mac]=match;
+ const expected=crypto.createHmac('sha256',secret).update(`career-professionals|magic-link-v1|${orderId}.${expires}.${random}`).digest('hex');
+ if(!safeEqual(expected,mac)||Number(expires)<Date.now())throw new ApiError(401,'This access link has expired. Request a new link using your email.');
+ return {orderId,tokenHash:sha(random),expiresAt:Number(expires)};
+}
+export function accessEmailHtml({link,free=false,amount=0}){
+ const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
+ return `<!doctype html><html><body style="font:16px/1.6 Arial,sans-serif;color:#192544;max-width:620px;margin:auto;padding:26px">
+ <h1 style="color:#5835d4">Career Guide for Professionals</h1><p>by AI Early Career Guide</p>
+ <h2>${free?'Your complimentary assessment is ready':'Your payment is confirmed'}</h2>
+ <p>${free?'Your coupon covered the full ₹499 assessment fee.':'We received your payment of ₹'+(amount/100).toLocaleString('en-IN',{maximumFractionDigits:2})+'.'}</p>
+ <p>Start your assessment now, or use this link to return if you close your browser. No password is required.</p>
+ <p><a href="${esc(link)}" style="display:inline-block;padding:13px 20px;border-radius:9px;background:#603be5;color:white;text-decoration:none;font-weight:bold">Start or Resume Assessment →</a></p>
+ <p style="font-size:13px;color:#65718a">This private link works once and expires after 7 days. If you need another link, enter the same email address on our website and select Email Me My Link. Do not forward the link.</p>
+ <p style="font-size:13px;color:#65718a">Your final career report will be sent to this email address once completed.</p>
+ <p style="font-size:13px">Need help? <a href="https://www.aiearlycareerguide.com/professionals/contact.html">Contact support</a>.</p>
+ </body></html>`;
+}
+
+// Firestore lease prevents duplicate confirmation emails when browser + webhook race.
+// Re-requesting access sends a new one-use link to the purchase email, never to the caller.
+export async function sendAccessEmail(orderRef,{resend=false}={}){
+ const database=db();const now=Date.now();
+ const decision=await database.runTransaction(async tx=>{
+  const snapshot=await tx.get(orderRef);if(!snapshot.exists)throw new ApiError(404,'Your order could not be found.');
+  const order=snapshot.data();if(order.status!=='paid')return {state:'unpaid'};
+  const sentAt=order.accessEmailSentAt?.toMillis?.()||0;
+  if(!resend&&sentAt)return {state:'sent'};
+  if(order.accessEmailLeaseUntil?.toMillis?.()>now)return {state:'sending'};
+  if(resend&&sentAt>now-2*60*1000&&order.accessLinkHash)return {state:'recent'};
+  const link=createAccessLink(orderRef.id);
+  tx.update(orderRef,{accessLinkHash:link.tokenHash,accessLinkExpiresAt:new Date(link.expiresAt),
+   accessEmailSentAt:null,accessEmailLeaseUntil:new Date(now+120000),accessEmailStatus:'sending',updatedAt:new Date()});
+  return {state:'send',token:link.token,email:order.email,amount:order.amount,free:order.amount===0};
+ });
+ if(decision.state!=='send')return {status:decision.state};
+ try{
+  if(!process.env.RESEND_API_KEY||!process.env.REPORT_FROM_EMAIL)throw new ApiError(503,'Confirmation email is not configured.');
+  const url=new URL(ACCESS_LINK_BASE);url.hash=`access=${decision.token}`; // fragment keeps token out of proxy access logs
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),14000);
+  let response,payload;
+  try{
+   response=await fetch('https://api.resend.com/emails',{method:'POST',signal:controller.signal,
+    headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json',
+      'Idempotency-Key':`career-access-${orderRef.id}-${decision.token.split('.')[2]}`},
+    body:JSON.stringify({from:process.env.REPORT_FROM_EMAIL,to:[decision.email],
+      subject:decision.free?'Your complimentary Career Professionals assessment is ready':'Payment received — Start your Career Professionals assessment',
+      html:accessEmailHtml({link:url.toString(),free:decision.free,amount:decision.amount})})});
+   payload=await response.json();
+  }finally{clearTimeout(timer);}
+  if(!response.ok||!payload?.id){console.error('Access email status',response.status);throw new ApiError(502,'The assessment link email could not be sent. Request another link from the website.');}
+  await orderRef.update({accessEmailSentAt:new Date(),accessEmailLeaseUntil:null,accessEmailStatus:'sent',accessEmailId:payload.id,updatedAt:new Date()});
+  return {status:'sent'};
+ }catch(error){
+  await orderRef.update({accessEmailLeaseUntil:null,accessEmailStatus:'pending',updatedAt:new Date()}).catch(()=>{});
+  if(error instanceof ApiError)throw error;
+  throw new ApiError(502,'Email is temporarily unavailable. Request another link from the website.');
+ }
+}
+
+export async function findIncompleteOrder(database,email){
+ // A single-field email query avoids requiring an additional Firestore composite index.
+ const snapshot=await database.collection(ORDERS).where('email','==',email).limit(50).get();
+ const candidates=snapshot.docs.filter(doc=>doc.data().status==='paid')
+  .sort((a,b)=>(b.data().paidAt?.toMillis?.()||b.data().createdAt?.toMillis?.()||0)-
+               (a.data().paidAt?.toMillis?.()||a.data().createdAt?.toMillis?.()||0));
+ for(const doc of candidates){
+  const order=doc.data(),created=order.paidAt?.toMillis?.()||order.createdAt?.toMillis?.()||0;
+  if(created&&Date.now()-created>30*24*60*60*1000)continue;
+  if(!order.sessionId)return doc;
+  const ss=await database.collection('professionalAssessments_v1').doc(order.sessionId).get();
+  if(ss.exists&&ss.data().status!=='complete'&&ss.data().accessExpiresAt?.toMillis?.()>Date.now())return doc;
+ }
+ return null;
 }
