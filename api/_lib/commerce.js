@@ -1,3 +1,4 @@
+import {competencyProgress} from './interview-logic.js';
 import crypto from 'node:crypto';
 import {ApiError,db,sha,safeEqual} from './store.js';
 import {buildReportPdf} from './pdf-report.js';
@@ -78,6 +79,11 @@ export async function sendReportEmail(ref){
  reserved=await database.runTransaction(async tx=>{
   const snap=await tx.get(ref),s=snap.data();
   if(!s||!s.paid||!s.email||!s.report)throw new ApiError(409,'The paid report is not ready for email.');
+  if(s.assessmentContractVersion===17){
+   const coverage=competencyProgress(s.blueprint||[],s.history||[]);
+   if(coverage.total===0||coverage.assessed!==coverage.total||coverage.skills.some(k=>k.answered<3))
+    throw new ApiError(409,'This assessment must complete three questions per essential skill before its report can be emailed.');
+  }
   if(s.reportEmailSentAt)return {state:'sent'};
   if(s.reportEmailLeaseUntil?.toMillis?.()>Date.now())return {state:'sending'};
   const until=new Date(Date.now()+120000);
@@ -194,7 +200,13 @@ export async function findIncompleteOrder(database,email){
   if(created&&Date.now()-created>30*24*60*60*1000)continue;
   if(!order.sessionId)return doc;
   const ss=await database.collection('professionalAssessments_v1').doc(order.sessionId).get();
-  if(ss.exists&&ss.data().status!=='complete'&&ss.data().accessExpiresAt?.toMillis?.()>Date.now())return doc;
+  if(ss.exists&&ss.data().accessExpiresAt?.toMillis?.()>Date.now()){
+   const state=ss.data(),coverage=competencyProgress(state.blueprint||[],state.history||[]);
+   const invalidComplete=state.status==='complete'&&(
+     (state.paid===true&&state.orderId===doc.id&&(!state.history||state.history.length===0)) ||
+     (state.assessmentContractVersion===17&&(coverage.total===0||coverage.assessed!==coverage.total)));
+   if(state.status!=='complete'||invalidComplete)return doc;
+  }
  }
  return null;
 }

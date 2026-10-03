@@ -351,7 +351,8 @@ function showQuestionWait(first=false){
 function setLiveBusy(b){liveBusy=b;for(const id of ['liveNext','liveBack','liveBegin','resumeBtn','retryNext'])$(id).disabled=b;$('liveNext').textContent=b?'Saving your answer…':'Continue →'}
 async function apiCall(route,body={},isStart=false){
  const headers={'Content-Type':'application/json'};
- if(!isStart){if(!liveSession)throw Error('Start a new live interview.');headers.Authorization=`Bearer ${liveSession.sessionToken}`;headers['x-session-id']=liveSession.sessionId;}
+ if(!isStart){if(!liveSession)throw Error('Start a new live interview.');headers.Authorization=`Bearer ${liveSession.sessionToken}`;headers['x-session-id']=liveSession.sessionId;
+  if(liveSession.paid&&paidPurchase)headers['x-checkout-order-id']=paidPurchase.orderId;}
  const response=await fetch(`${apiPrefix}/${route}`,{method:'POST',headers,body:JSON.stringify(body),cache:'no-store'});
  let result;try{result=await response.json()}catch{throw Error('The server returned an unexpected response. Check the deployment settings.');}
  if(!response.ok){if(response.status===401&&!isStart){storeSession(null)}throw Error(result.error||'The request could not be completed.');}
@@ -361,10 +362,15 @@ function updateFromServer(result){
  assessmentMode='live';
  liveHistory.length=0;for(const entry of(result.history||[]))liveHistory.push({...entry});
  if(result.profile)savedServerProfile=result.profile;
- currentLiveQuestion=result.question||null;liveProgressState=result.progress||liveProgressState;
+ // Refuse a restored session belonging to a different purchaser or order.
+ if(result.paid&&paidPurchase&&(result.orderId!==paidPurchase.orderId||
+     String(result.email||'').toLowerCase()!==String(paidPurchase.email||'').toLowerCase()))
+  throw Error('Your saved assessment belongs to a different purchase. Please re-enter your email; do not pay again.');
+ currentLiveQuestion=result.question||null;liveProgressState=result.progress||{assessed:0,total:0};
  // A completed flag alone is NOT proof that the current purchaser completed
  // the assessment. Existing reports remain accessible as historical results.
- if(result.status==='complete'&&(completedAllSkills(liveProgressState)||result.hasReport)){
+ if(result.status==='complete'&&(completedAllSkills(liveProgressState)||
+    (result.assessmentContractVersion!==17&&result.hasReport&&liveHistory.length>0))){
   showCompletion('full',liveProgressState);return true;
  }
  if(currentLiveQuestion){renderLive();show('liveInterview');return true;}
@@ -380,8 +386,8 @@ async function fetchNext(){
  const state=await apiCall('next-question');
  if(state.done){
   liveProgressState=state.progress||liveProgressState;
-  if(!completedAllSkills(liveProgressState)&&!state.hasReport)
-   throw Error('Your assessment is not complete yet. Please retry loading the interview.');
+  if(!completedAllSkills(liveProgressState)&&!(state.completionMode==='legacy'&&state.hasReport&&Number(state.answered)>0))
+   throw Error('The assessment is not complete. Please contact support to restore your questions; do not pay again.');
   currentLiveQuestion=null;showCompletion(state.completionMode||'full',liveProgressState);return;
  }
  currentLiveQuestion=state.question;liveProgressState=state.progress||liveProgressState;renderLive();show('liveInterview');
@@ -818,7 +824,9 @@ async function beginPaidLive(){
    const session=await apiCall('start',{paidOrder:{orderId:paidPurchase.orderId,checkoutNonce:paidPurchase.checkoutNonce},profile},true);
    if(session.reused&&session.status==='complete')
     throw Error('This purchase already has a completed assessment. Please reopen the previous report or start a new purchase.');
-   savedServerProfile=profile;storeSession({...session,email:paidPurchase.email,orderId:paidPurchase.orderId});
+   if(session.orderId!==paidPurchase.orderId||String(session.email||'').toLowerCase()!==String(paidPurchase.email||'').toLowerCase())
+    throw Error('The returned assessment belongs to a different purchase. Please contact support; do not pay again.');
+   savedServerProfile=profile;storeSession({...session,email:session.email,orderId:session.orderId});
   }
   await fetchNext();
  }catch(e){show('review');$('resumeError').textContent=e.message;alert('Could not start your assessment. Your verified purchase is saved in this browser. Please retry.');}

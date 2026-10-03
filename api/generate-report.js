@@ -14,8 +14,11 @@ export default async function handler(req,res){
     const state=await db().runTransaction(async tx=>{
       const snap=await tx.get(ref),s=snap.data();
       if(!s)throw new ApiError(401,'Assessment session not found.');
-      if(s.report)return {kind:'cached',report:s.report,generatedAt:s.reportGeneratedAt?.toDate?.()?.toISOString?.()||null,paid:Boolean(s.paid)};
       const coverage=competencyProgress(s.blueprint||[],s.history||[]);
+      if(s.assessmentContractVersion===17 && (coverage.total===0||coverage.assessed!==coverage.total||
+         coverage.skills.some(skill=>skill.answered<3)))
+       throw new ApiError(409,'Complete all three questions for every essential skill before accessing your report.');
+      if(s.report)return {kind:'cached',report:s.report,generatedAt:s.reportGeneratedAt?.toDate?.()?.toISOString?.()||null,paid:Boolean(s.paid)};
       if(s.status!=='complete'||coverage.total===0||coverage.assessed!==coverage.total||
          coverage.skills.some(skill=>skill.answered<3))
        throw new ApiError(409,'Complete all three questions for every essential skill before generating your report.');

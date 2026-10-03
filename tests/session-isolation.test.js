@@ -60,7 +60,7 @@ function frontendHarness({oldSession,order}){
  let setLiveBusy=()=>{};
  let showQuestionWait=()=>{};
  let profileForAPI=()=>({employmentStatus:'Employed',targetJobTitle:'Director Transformation',qualification:'Degree',careerObjective:'Promotion',skills:'Leadership'});
- let apiCall=async(route,payload,isStart)=>{calls.push(['api',route,payload?.paidOrder?.orderId]);if(route!=='start'||!isStart)throw Error('Unexpected API route');return {sessionId:'new-session',sessionToken:'new-token',paid:true,status:'active',reused:false};};
+ let apiCall=async(route,payload,isStart)=>{calls.push(['api',route,payload?.paidOrder?.orderId]);if(route!=='start'||!isStart)throw Error('Unexpected API route');return {sessionId:'new-session',sessionToken:'new-token',paid:true,status:'active',reused:false,orderId:payload.paidOrder.orderId,email:paidPurchase.email};};
  let fetchNext=async()=>calls.push(['fetchNext',liveSession?.sessionId]);
  let updateReportAvailability=()=>{};
  let enteredEmail=()=>paidPurchase?.email;
@@ -137,4 +137,17 @@ test('the server and report both require complete three-question coverage for ne
  const skills=[...Array(4)].map((_,i)=>({id:`s${i+1}`,name:`Skill ${i+1}`,type:i===0?'technical':'behavioural'}));
  const answered=skills.flatMap(s=>[0,1].map(i=>({competencyId:s.id,questionType:s.type==='technical'&&i===0?'knowledge':'scenario',correct:true})));
  assert.equal(competencyProgress(skills,answered).assessed,0);
+});
+
+
+test('a modern assessment with an old saved report but zero answers cannot jump to report preferences',()=>{
+ const order={orderId:'free_new',email:'new@example.com',checkoutNonce:'proof'};
+ const {api,calls}=frontendHarness({oldSession:{sessionId:'session-new',orderId:order.orderId,email:order.email,paid:true},order});
+ const consumed=api.updateFromServer({status:'complete',paid:true,orderId:order.orderId,email:order.email,
+  assessmentContractVersion:17,hasReport:true,history:[],question:null,
+  progress:{assessed:0,total:4,answered:0}});
+ assert.equal(consumed,false,'an invalid complete flag must not open learning preferences');
+ assert(!calls.some(c=>c[0]==='show'&&c[1]==='complete'));
+ assert.throws(()=>api.updateFromServer({status:'complete',paid:true,orderId:'free_someone_else',email:'old@example.com',
+  assessmentContractVersion:17,hasReport:true,history:[],progress:{assessed:4,total:4,answered:12}}),/different purchase/);
 });

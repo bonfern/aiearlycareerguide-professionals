@@ -215,7 +215,7 @@ test('verified checkout reference restores an existing session without repeating
  const purchase=(await call(orderHandler,{email:'restorable@example.com',couponCode:'BONNEY100',consent:true})).body;
  const sid='f'.repeat(32);
  STORE.get(`${ORDERS}/${purchase.orderId}`).sessionId=sid;
- STORE.set(`professionalAssessments_v1/${sid}`,{status:'active',paid:true,email:'restorable@example.com',
+ STORE.set(`professionalAssessments_v1/${sid}`,{status:'active',paid:true,orderId:purchase.orderId,email:'restorable@example.com',
    tokenHash:sha('1'.repeat(64)),accessExpiresAt:{toMillis:()=>now()+86400000,toDate:()=>new Date(now()+86400000)},history:[]});
  const resumed=await call(start,{paidOrder:{orderId:purchase.orderId,checkoutNonce:purchase.checkoutNonce}});
  assert.equal(resumed.statusCode,201);assert.equal(resumed.body.sessionId,sid);
@@ -356,4 +356,89 @@ test('report email includes a generated A4 PDF attachment and an HTML skill summ
  assert.equal(mail.attachments[0].filename,'career-competency-development-report.pdf');
  const pdf=Buffer.from(mail.attachments[0].content,'base64');assert.match(pdf.toString('latin1').slice(0,9),/%PDF-1\.4/);
  const duplicate=await sendReportEmail(ref);assert.equal(duplicate.status,'sent');assert.equal(outgoing.length,1);
+});
+
+// End-to-end session regression. Both purchasers intentionally have the SAME
+// career goal/profile and reuse the SAME prepared question bank.
+test('two different emails sharing one cached bank each receive ALL 12 interview questions',async()=>{
+ const {sharedBankSpec,BANK_COLLECTION}=await import('../api/_lib/question-cache.js');
+ const {default:nextQuestion}=await import('../api/next-question.js');
+ const {default:submitAnswer}=await import('../api/submit-answer.js');
+ STORE.clear();outgoing=[];seedCoupon();
+ const profile={employmentStatus:'Employed',careerObjective:'Get promoted',currentJobTitle:'AVP Process Excellence',
+  qualification:'Master degree',skills:'Leadership',targetJobTitle:'Director Transformation',
+  targetFunction:'Strategy / transformation',targetIndustry:'Consumer goods / FMCG'};
+ const blueprint=[
+  ...['Strategy','Benefits Measurement','Change Adoption'].map((name,i)=>({id:`s${i+1}`,name,type:'technical',importance:'essential',benchmark:`Able to lead ${name} projects and make justified trade-offs.`,subskills:['Measure results','Manage risks']})),
+  {id:'s4',name:'Executive Influence',type:'behavioural',importance:'essential',benchmark:'Able to obtain durable support while managing objections fairly.',subskills:['Explain decisions','Build alignment']}
+ ];
+ const bank={targetRole:'Director Transformation',blueprint,untestedSkills:[
+  {id:'u1',name:'Programme Governance',expectation:'Own programme decisions and dependencies.'},
+  {id:'u2',name:'Vendor Management',expectation:'Manage delivery obligations and risks.'}],
+  questionBank:blueprint.flatMap(skill=>[0,1,2].map(i=>({competencyId:skill.id,category:skill.name,
+   text:`A brief question about ${skill.name}, part ${i+1}?`,type:'single',
+   questionType:skill.type==='technical'&&i===0?'knowledge':'scenario',subskill:skill.subskills[i%2],
+   difficulty:i===1?'advanced':'applied',
+   options:['Review the relevant evidence','Ignore the issue','Wait without acting','Reject the proposed work','Not sure'],
+   answerKey:0,rationale:'Reviewing the evidence best supports a clear and justified decision.'})))};
+ const key=sharedBankSpec(profile).id;
+ STORE.set(`${BANK_COLLECTION}/${key}`,{status:'ready',bank,expiresAt:new Date(Date.now()+3600000)});
+ async function createPerson(email){
+  const purchase=(await call(orderHandler,{email,couponCode:'BONNEY100',consent:true})).body;
+  assert(purchase.orderId,'created coupon purchase');
+  const started=await call(start,{paidOrder:{orderId:purchase.orderId,checkoutNonce:purchase.checkoutNonce},profile});
+  assert.equal(started.statusCode,201,JSON.stringify(started.body));
+  assert.equal(started.body.status,'active');
+  assert.equal(started.body.email,email);
+  const headers={authorization:`Bearer ${started.body.sessionToken}`,'x-session-id':started.body.sessionId,
+   'x-checkout-order-id':purchase.orderId};
+  return {purchase,session:started.body,headers};
+ }
+ const first=await createPerson('first-person@example.com');
+ const second=await createPerson('second-person@example.com');
+ assert.notEqual(first.session.sessionId,second.session.sessionId,'unique session IDs');
+ const getNext=async user=>call(nextQuestion,{},'',user.headers);
+ const answer=async (user,q)=>call(submitAnswer,{questionId:q.id,answer:q.options[0]},'',user.headers);
+ const firstQ=await getNext(first),secondQ=await getNext(second);
+ assert.equal(firstQ.statusCode,200,JSON.stringify(firstQ.body));
+ assert.equal(secondQ.statusCode,200,JSON.stringify(secondQ.body));
+ assert.equal(firstQ.body.done,false);assert.equal(secondQ.body.done,false);
+ assert.equal(firstQ.body.question.text,secondQ.body.question.text,'shared questions, not shared progress');
+ assert.equal(firstQ.body.question.answerKey,undefined,'answer key is private');
+ for(let i=0;i<12;i++){
+  const result=i===0?firstQ:await getNext(first);
+  assert.equal(result.statusCode,200,JSON.stringify(result.body));
+  assert.equal(result.body.done,false,`first user question ${i+1} must appear`);
+  assert.equal((await answer(first,result.body.question)).statusCode,200);
+ }
+ const done=await getNext(first);
+ assert.equal(done.statusCode,200);assert.equal(done.body.done,true);
+ assert.equal(done.body.progress.assessed,4);
+ assert.equal(STORE.get(`professionalAssessments_v1/${first.session.sessionId}`).history.length,12);
+ assert.equal(STORE.get(`professionalAssessments_v1/${second.session.sessionId}`).history.length,0,
+  'finishing the first user must not modify another user');
+ const secondReopen=await getNext(second);
+ assert.equal(secondReopen.statusCode,200);assert.equal(secondReopen.body.done,false);
+ assert.equal(secondReopen.body.question.id,secondQ.body.question.id,'second user retains own first question');
+});
+
+test('an incorrectly completed paid session with NO interview is recognised and repaired, not repurchased',async()=>{
+ const {default:nextQuestion}=await import('../api/next-question.js');
+ STORE.clear();outgoing=[];seedCoupon();
+ const purchase=(await call(orderHandler,{email:'skipped@example.com',couponCode:'BONNEY100',consent:true})).body;
+ const profile={employmentStatus:'Employed',careerObjective:'Get promoted',currentJobTitle:'Operations Lead',qualification:'Degree',skills:'Analysis',targetJobTitle:'Director Transformation'};
+ const started=await call(start,{paidOrder:{orderId:purchase.orderId,checkoutNonce:purchase.checkoutNonce},profile});
+ assert.equal(started.statusCode,201);
+ const sid=started.body.sessionId,stored=STORE.get(`professionalAssessments_v1/${sid}`);
+ stored.status='complete';stored.report={bad:'generated without an interview'};stored.blueprint=null;
+ const lookup=await call(orderHandler,{email:'skipped@example.com'},'lookup');
+ assert.equal(lookup.body.unfinished,true,'a skipped session is NOT considered a completed assessment');
+ const restored=await call(start,{paidOrder:{orderId:purchase.orderId,checkoutNonce:purchase.checkoutNonce}});
+ assert.equal(restored.statusCode,201);assert.equal(restored.body.reused,true);assert.equal(restored.body.repaired,true);
+ assert.equal(restored.body.status,'active');
+ assert.equal(STORE.get(`professionalAssessments_v1/${sid}`).report,null);
+ assert.equal(STORE.get(`professionalAssessments_v1/${sid}`).history.length,0);
+ const wrong=await call(nextQuestion,{},'',{authorization:`Bearer ${restored.body.sessionToken}`,'x-session-id':sid,
+  'x-checkout-order-id':'free_different'});
+ assert.equal(wrong.statusCode,409,'another purchase may never claim this session');
 });

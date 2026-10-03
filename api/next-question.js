@@ -11,18 +11,37 @@ export default async function handler(req,res){
   ({ref}=await authorize(req));
   const result=await db().runTransaction(async tx=>{
    const snap=await tx.get(ref);if(!snap.exists)throw new ApiError(401,'Session no longer available.');
-   const s=snap.data();
-   if(s.currentQuestion)return {kind:'existing',state:safeState(s)};
+   let s=snap.data();
+   // Recover a verified session that a previous deployment completed without
+   // administering a single question. This never affects genuine completed tests.
+   if(s.status==='complete'&&(!s.history||s.history.length===0)){
+    const recovery={status:'active',assessmentContractVersion:17,history:[],
+     currentQuestion:null,blueprint:null,questionBank:null,report:null,
+     reportGeneratedAt:null,reportLease:null,reportCallsUsed:0,
+     untestedSkills:[],completionMode:null,generationLease:null,callsUsed:0,
+     updatedAt:new Date()};
+    tx.update(ref,recovery);s={...s,...recovery};
+   }
+   if(s.paid&&(!s.orderId||!s.email))throw new ApiError(409,'Your purchase and assessment could not be matched. Please contact support; do not pay again.');
+   if(s.currentQuestion&&s.status!=='complete')return {kind:'existing',state:safeState(s)};
    const gradedHistory=scoredHistory(s.history||[]);
    const completion=competencyProgress(s.blueprint||[],gradedHistory);
    // Never trust a legacy "complete" flag by itself. Finished results from
    // older versions can still be reopened when a saved report really exists.
    const finished=completion.total>=4&&completion.assessed===completion.total&&
      gradedHistory.filter(h=>typeof h.correct==='boolean').length>=completion.total*3;
-   if(s.status==='complete'&&(s.report||finished))
-    return {kind:'done',hasReport:Boolean(s.report),answered:gradedHistory.length,progress:publicProgress(s),completionMode:s.completionMode||'full'};
-   // Older incomplete sessions may have been marked complete by the retired early-exit path.
-   if(s.status==='complete'&&!s.report)tx.update(ref,{status:'active',completionMode:null,updatedAt:new Date()});
+   // A report or a status flag cannot complete a new assessment. Each skill
+   // MUST have three graded answers. Allow historical, genuinely answered reports
+   // to remain available without letting a fresh session inherit that privilege.
+   if(s.status==='complete'&&finished)
+    return {kind:'done',hasReport:Boolean(s.report),answered:gradedHistory.length,progress:publicProgress(s),completionMode:'full'};
+   if(s.status==='complete'&&s.assessmentContractVersion!==17&&s.report&&gradedHistory.length>0)
+    return {kind:'done',hasReport:true,answered:gradedHistory.length,progress:publicProgress(s),completionMode:'legacy'};
+   // Recover an incorrectly completed new session without erasing answers. If
+   // an invalid report exists, refuse to show it and require verified repair.
+   if(s.status==='complete'&&s.report)throw new ApiError(409,'This saved report did not pass the completion check. Contact support to restore your assessment; do not pay again.');
+   if(s.status==='complete')tx.update(ref,{status:'active',completionMode:null,updatedAt:new Date()});
+   if(s.currentQuestion)return {kind:'existing',state:safeState({...s,status:'active'})};
    const target=s.blueprint?.length?nextCompetency(s.blueprint,gradedHistory):null;
    if(s.blueprint?.length&&!target){
     if(completion.assessed!==completion.total||completion.total===0)

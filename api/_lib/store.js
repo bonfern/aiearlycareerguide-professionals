@@ -40,6 +40,9 @@ export async function authorize(req) {
   const snap = await ref.get();
   if (!snap.exists || !safeEqual(snap.data().tokenHash,sha(token))) throw new ApiError(401, 'Session not found. Please start a new interview.');
   const session = snap.data();
+  const claimedOrder = req.headers['x-checkout-order-id'];
+  if (session.paid && claimedOrder && claimedOrder !== session.orderId)
+    throw new ApiError(409,'This assessment belongs to a different purchase. Select the correct email and continue; do not pay again.');
   if (session.accessExpiresAt?.toMillis?.() < Date.now()) throw new ApiError(401,'This assessment session has expired. Please start again.');
   return {ref,session};
 }
@@ -79,5 +82,7 @@ export function safeState(session){
  return {status:session.status,profile:session.profile,answered:session.history?.length||0,
   history:(session.history||[]).map(({question,category,answer,competencyId,subskill,questionType})=>({question,category,answer,competencyId,subskill,questionType})),
   question:publicQuestion(session.currentQuestion),progress:publicProgress(session),
-  paid:Boolean(session.paid),hasReport:Boolean(session.report),completionMode:session.completionMode||'full',accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null};
+  paid:Boolean(session.paid),orderId:session.paid?session.orderId||null:null,
+  email:session.paid?session.email||null:null,assessmentContractVersion:session.assessmentContractVersion||0,
+  hasReport:Boolean(session.report),completionMode:session.completionMode||'full',accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null};
 }

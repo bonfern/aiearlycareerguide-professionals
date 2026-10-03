@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import {db,newSession,previewAuthorized,ApiError,output,handleError,postOnly,parseBody,sha,safeEqual} from './_lib/store.js';
 import {validatePayload} from './_lib/interview-logic.js';
 import {ORDERS,verifyCheckoutProof,checkoutToken,parseAccessLink,recoveredCheckoutProof,createAccessLink} from './_lib/commerce.js';
+async function orderEmail(database,id){const snap=await database.collection(ORDERS).doc(id).get();return snap.data()?.email||null;}
 export default async function handler(req,res){
  if(!postOnly(req,res))return;
  try{
@@ -89,19 +90,32 @@ export default async function handler(req,res){
      const ref=database.collection('professionalAssessments_v1').doc(order.sessionId),existing=await tx.get(ref);
      if(!existing.exists)throw new ApiError(410,'This assessment was deleted. Contact support.');
      if(existing.data().accessExpiresAt?.toMillis?.()<Date.now())throw new ApiError(410,'Assessment access has expired. Contact support.');
-     tx.update(ref,{tokenHash:sha(token),updatedAt:new Date()});
-     return {id:order.sessionId,accessExpiresAt:existing.data().accessExpiresAt.toDate().toISOString(),status:existing.data().status,reused:true};
+     if(existing.data().orderId!==orderId||existing.data().email!==order.email||existing.data().paid!==true)
+      throw new ApiError(409,'The saved assessment does not belong to this purchase. Please contact support; do not pay again.');
+     // Older deployments could mark a session complete before asking ANY skill
+     // questions. A valid purchase may safely reset this impossible result.
+     const old=existing.data(),noInterview=old.status==='complete'&&(!old.history||old.history.length===0);
+     const updates={tokenHash:sha(token),updatedAt:new Date()};
+     if(noInterview)Object.assign(updates,{status:'active',assessmentContractVersion:17,
+      history:[],blueprint:null,questionBank:null,currentQuestion:null,report:null,
+      reportGeneratedAt:null,reportLease:null,reportCallsUsed:0,untestedSkills:[],
+      completionMode:null,generationLease:null,callsUsed:0});
+     tx.update(ref,updates);
+     return {id:order.sessionId,accessExpiresAt:old.accessExpiresAt.toDate().toISOString(),
+      status:noInterview?'active':old.status,reused:true,repaired:noInterview};
     }
     if(!profile)throw new ApiError(400,'Complete your profile before starting the assessment.');
     const session=newSession(30),ref=database.collection('professionalAssessments_v1').doc(session.id);
     tx.create(ref,{tokenHash:sha(token),email:order.email,paid:true,orderId,
-     profile,history:[],currentQuestion:null,status:'active',callsUsed:0,generationLease:null,
+     profile,history:[],currentQuestion:null,blueprint:null,questionBank:null,report:null,assessmentContractVersion:17,
+     status:'active',callsUsed:0,generationLease:null,
      createdAt:new Date(),updatedAt:new Date(),accessExpiresAt:session.accessExpiresAt,retainUntil:session.retainUntil});
     tx.update(orderRef,{sessionId:session.id,updatedAt:new Date()});
     return {id:session.id,accessExpiresAt:session.accessExpiresAt.toISOString(),reused:false};
    });
    return output(res,201,{sessionId:granted.id,sessionToken:token,paid:true,
-    accessExpiresAt:granted.accessExpiresAt,status:granted.status||'active',reused:granted.reused});
+    accessExpiresAt:granted.accessExpiresAt,status:granted.status||'active',reused:granted.reused,repaired:Boolean(granted.repaired),
+    orderId,email:(await orderEmail(database,orderId))});
   }
   if(!profile)throw new ApiError(400,'Complete your profile before starting the assessment.');
   if(!process.env.PREVIEW_ACCESS_CODE||!previewAuthorized(raw.previewCode))throw new ApiError(401,'Incorrect private preview access code.');
@@ -114,7 +128,7 @@ export default async function handler(req,res){
    if(starts>=5)throw new ApiError(429,'Daily preview limit reached. Please try again tomorrow.');
    tx.set(bucket,{starts:starts+1,retainUntil:new Date(Date.now()+3*86400000)},{merge:true});
    tx.create(ref,{tokenHash:session.tokenHash,paid:false,profile,history:[],currentQuestion:null,
-    status:'active',callsUsed:0,generationLease:null,createdAt:new Date(),updatedAt:new Date(),
+    status:'active',assessmentContractVersion:17,callsUsed:0,generationLease:null,createdAt:new Date(),updatedAt:new Date(),
     accessExpiresAt:session.accessExpiresAt,retainUntil:session.retainUntil});
   });
   return output(res,201,{sessionId:session.id,sessionToken:session.token,paid:false,
