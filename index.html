@@ -9,7 +9,24 @@
 const PROFESSIONALS_BASE = location.pathname === '/professionals' || location.pathname.startsWith('/professionals/') ? '/professionals/' : '/';
 const baseElement=document.createElement('base');baseElement.href=PROFESSIONALS_BASE;document.head.appendChild(baseElement);
 </script>
-
+<script>
+// Hide intermediate pages while a one-time cross-domain transfer is redeemed.
+if(/^#(?:transfer|access)=/.test(location.hash))document.documentElement.classList.add('access-restoring');
+</script>
+<style>
+html.access-restoring body{overflow:hidden}
+html.access-restoring body>header,html.access-restoring body>main,html.access-restoring body>footer{visibility:hidden}
+#accessRestoreOverlay{display:none}
+html.access-restoring #accessRestoreOverlay{display:flex;position:fixed;inset:0;z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:14px;padding:30px;background:linear-gradient(135deg,#f4efff,#eef5ff);color:#17254b;text-align:center;font:600 18px/1.5 Inter,system-ui,Arial,sans-serif}
+.access-spinner{width:35px;height:35px;border-radius:50%;border:4px solid #ded5fa;border-top-color:#6135dd;animation:access-spin .85s linear infinite}
+@keyframes access-spin{to{transform:rotate(360deg)}}
+#resumeGate .checkout-actions .btn{margin-top:0}
+.resume-later{margin-top:30px;padding-top:17px;border-top:1px solid #e4e4f3}
+.resume-later p{font-size:13px;color:#65718a;margin:0 0 4px}
+#emailRecoveryBtn{font-size:13px;padding:8px 0;margin-top:2px;white-space:normal;text-align:left}
+#emailRecoveryStatus{font-size:13px;margin:9px 0 0;color:#51647e}
+#emailRecoveryError{font-size:13px;margin-top:7px}
+</style>
 <style>
 :root{font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#17253e;background:#f4f7fc}*{box-sizing:border-box}body{margin:0}header{background:#102447;color:white;padding:20px max(24px,calc((100vw - 960px)/2));font-weight:750}header small{display:block;color:#bcd0ed;font-weight:400;margin-top:5px}main{max-width:960px;margin:42px auto;padding:0 22px}.panel{background:#fff;border-radius:18px;padding:34px;box-shadow:0 8px 30px #10244712}h1{font-size:clamp(29px,4vw,44px);margin:0 0 14px}h2{font-size:clamp(23px,3vw,29px);margin:0 0 13px}p{line-height:1.6;color:#52617b}.eyebrow{color:#2163be;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:11px}.btn{border:0;border-radius:9px;padding:13px 20px;background:#1c59ac;color:white;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px}.btn.secondary{background:#e9eff9;color:#173e78;margin-right:8px}.btn:disabled{opacity:.45;cursor:not-allowed}.hidden{display:none!important}.progress{height:8px;background:#e9eff9;border-radius:8px;margin:19px 0 28px}.progress span{display:block;height:100%;background:#2673c9;border-radius:8px;transition:width .2s}label{display:block;font-weight:650;margin:12px 0 8px}input:not([type=checkbox]),select,textarea{width:100%;padding:13px;border:1px solid #bfcce0;border-radius:8px;font:inherit;background:white;color:#17253e}textarea{min-height:105px}.hint{font-size:13px;color:#65748b;margin:10px 0}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:22px 0}.card{border:1px solid #dbe4f2;padding:18px;border-radius:12px}.card strong{display:block;margin-bottom:7px}.review{padding:14px 0;border-bottom:1px solid #e7ecf5;display:flex;justify-content:space-between;align-items:center;gap:12px}.review strong{display:block;margin-bottom:5px}.review .value{font-size:15px;color:#415371;white-space:pre-wrap}.notice{background:#f1f6ff;padding:15px;border-radius:9px;color:#345177;margin:20px 0}.choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:15px}.choice{display:flex;align-items:center;gap:10px;border:1.5px solid #ced9e9;border-radius:11px;padding:14px 12px;font-weight:550;margin:0;cursor:pointer;min-height:54px}.choice.selected{border-color:#2673c9;background:#eef5ff;box-shadow:0 0 0 1px #2673c9}.choice input{flex:0 0 auto;accent-color:#1c59ac;width:17px;height:17px;margin:0}.freeform{margin-top:14px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.muted{font-size:13px;color:#63738a}.error{color:#b42318;font-size:13px;font-weight:650;min-height:20px;margin:12px 0 0}.linkbtn{background:none;border:0;color:#1c59ac;font-weight:700;cursor:pointer;padding:8px;white-space:nowrap}.num{color:#59708f;font-size:13px}.sectionhead{font-weight:750;margin:23px 0 0}.tag{display:inline-block;background:#e8f1ff;border-radius:50px;padding:5px 12px;font-size:13px;color:#245c9b}.footeractions{margin-top:19px}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #89baf9;outline-offset:3px}@media(max-width:600px){main{margin:22px auto}.panel{padding:22px}.choice-grid{grid-template-columns:1fr}.review{align-items:flex-start}}
 .report-block{padding:16px 0;border-top:1px solid #dce6f2}.report-block h3{color:#163b72}.report-item{padding:13px 0;border-bottom:1px solid #e8eef7}.report-item strong{display:block;color:#193b69;margin-bottom:4px}.report-item p{margin:5px 0 9px}.report-list{padding-left:21px;line-height:1.7}.report-meta{font-size:13px;color:#586b83}.report-note{background:#f1f6ff;border-left:4px solid #4075b6;padding:12px 16px;margin:18px 0}@media print{body{background:white}header,.no-print,main>section:not(#report){display:none!important}main{max-width:none;margin:0;padding:0}#report{display:block!important;box-shadow:none;padding:0}.report-item{break-inside:avoid}.report-note{break-inside:avoid}}
@@ -38,11 +55,12 @@ body{background:#fff}p{color:#526078}main{max-width:1200px;margin:0 auto;padding
 #existingAccessBox{background:#f2efff;border:1px solid #e0d9fc;margin:16px 0 20px}
 #existingAccessBox .btn{margin:5px 10px 5px 0}
 .checkout-actions{display:flex;flex-wrap:wrap;gap:9px;align-items:center}.checkout-actions .btn{margin:6px 0}
-#checkoutConsent{accent-color:#6847e8}#emailGate,#resumeGate{max-width:690px;margin-left:auto;margin-right:auto}#emailGate .checkout-actions,#resumeGate .checkout-actions{margin-top:16px}#checkoutEmailDisplay,#returningEmail{overflow-wrap:anywhere}#emailGateStatus,#recoveryStatus{min-height:18px}
+#checkoutConsent{accent-color:#6847e8}#emailGate,#resumeGate{max-width:690px;margin-left:auto;margin-right:auto}#emailGate .checkout-actions,#resumeGate .checkout-actions{margin-top:16px}#checkoutEmailDisplay,#returningEmail{overflow-wrap:anywhere}#emailGateStatus{min-height:18px}
 </style>
 <link rel="stylesheet" href="professional-site.css">
 </head>
 <body>
+<div id="accessRestoreOverlay" role="status" aria-live="polite"><span class="access-spinner" aria-hidden="true"></span><span>Opening your saved assessment…</span></div>
 <header class="brand-header no-print"><div class="brand-header-inner">
 <a class="brand-id" href="/professionals" aria-label="Career Guide for Professionals home" data-home-link><img class="brand-logo" src="brand-logo.webp" alt="AI Early Career Guide" width="800" height="300"><span class="brand-product"><strong>Career Guide<br>for Professionals</strong><small>by AI Early Career Guide</small></span></a>
 <nav class="brand-nav" aria-label="Main navigation"><a data-section-link="how-it-works" href="/professionals#how-it-works">How It Works</a><a data-section-link="who-its-for" href="/professionals#who-its-for">Who It’s For</a><a href="know-more.html">Know More</a><a href="contact.html">Contact</a></nav>
@@ -75,8 +93,11 @@ body{background:#fff}p{color:#526078}main{max-width:1200px;margin:0 auto;padding
  <div class="eyebrow">Welcome back</div><h2>Continue your assessment</h2>
  <p>We found an unfinished assessment for <strong id="returningEmail"></strong>. You don't need to pay again.</p>
  <p id="resumeGateHint" class="hint"></p>
- <div id="recoveryStatus" class="hint" aria-live="polite"></div><div id="resumeGateError" class="error" role="alert" aria-live="polite"></div>
- <div class="checkout-actions"><button type="button" id="resumeGateBack" class="btn secondary">← Change Email</button><button type="button" id="continueExistingBtn" class="btn">Continue Assessment →</button><button type="button" id="legacyResumeBtn" class="btn secondary hidden">Continue from Original Website →</button></div>
+ <div id="resumeGateError" class="error" role="alert" aria-live="polite"></div>
+ <div class="checkout-actions"><button type="button" id="resumeGateBack" class="btn secondary">← Change Email</button><button type="button" id="continueExistingBtn" class="btn">Continue with the assessment →</button><button type="button" id="legacyResumeBtn" class="btn hidden">Continue with the assessment →</button></div>
+ <div class="resume-later"><p>Want to finish on another device or later?</p>
+ <button type="button" id="emailRecoveryBtn" class="linkbtn">Email secure link to complete later →</button>
+ <p id="emailRecoveryStatus" aria-live="polite"></p><div id="emailRecoveryError" class="error" role="alert" aria-live="polite"></div></div>
 </section>
 <section id="checkout" class="panel checkout-panel hidden">
  <div class="eyebrow">Step 2 of 2 · Checkout</div><h2>Complete your assessment purchase</h2>
@@ -659,12 +680,13 @@ async function checkEmailAndRoute(){
   if(result.unfinished){
    $('returningEmail').textContent=email;
    const canTransfer=location.hostname!=='aiearlycareerguide-professionals.vercel.app'&&!result.sameDevice;
-   $('resumeGateHint').textContent=result.sameDevice?'Your assessment is ready to continue here.':
-    canTransfer?'If you first started on our earlier Vercel address, transfer access from that browser. Otherwise use a secure email link.':
-    'This browser has no saved access. We can send a secure link to your assessment email.';
-   $('continueExistingBtn').textContent=result.sameDevice?'Continue Assessment →':'Email a Secure Link →';
+   $('resumeGateHint').textContent=result.sameDevice?'Continue from where you left off.':
+    canTransfer?'Select Continue to restore your previous assessment securely.':
+    'This browser does not hold your original access. Use the email link below to continue.';
+   $('continueExistingBtn').classList.toggle('hidden',!result.sameDevice);
    $('legacyResumeBtn').classList.toggle('hidden',!canTransfer);
-   $('resumeGateError').textContent='';$('recoveryStatus').textContent='';show('resumeGate');
+   $('resumeGateError').textContent='';$('emailRecoveryStatus').textContent='';$('emailRecoveryError').textContent='';
+   $('emailRecoveryBtn').disabled=false;show('resumeGate');
   }else{
    // Never reuse consent or an earlier coupon for a different customer.
    $('checkoutConsent').checked=false;$('couponCode').value='';resetQuote();
@@ -684,7 +706,7 @@ async function continueExisting(){
     rememberPurchase(purchase);recoverBusy=false;$('continueExistingBtn').disabled=false;show('profile');render();return;
    }
    if(saved&&saved.sessionId===emailGateState.sessionId){
-    storeSession(saved);assessmentMode='live';show('welcome');await resumeLive();
+    storeSession(saved);assessmentMode='live';show('liveLoading');$('liveLoadingTitle').textContent='Opening your saved assessment…';await resumeLive();
     if(!$('resumeError').textContent){recoverBusy=false;$('continueExistingBtn').disabled=false;return;}
     // An expired or rotated browser token is not a reason to charge again.
    }
@@ -693,17 +715,23 @@ async function continueExisting(){
     // session storage was cleared. No email is needed on this same browser.
     const restored=await apiCall('start',{paidOrder:{orderId:purchase.orderId,checkoutNonce:purchase.checkoutNonce}},true);
     storeSession({...restored,paid:true,email:enteredEmail(),orderId:purchase.orderId});
-    rememberPurchase(purchase);assessmentMode='live';show('welcome');await resumeLive();
+    rememberPurchase(purchase);assessmentMode='live';show('liveLoading');$('liveLoadingTitle').textContent='Opening your saved assessment…';await resumeLive();
     if(!$('resumeError').textContent){recoverBusy=false;$('continueExistingBtn').disabled=false;return;}
    }
   }catch(error){$('resumeGateError').textContent=error.message;show('resumeGate');}
  }
- $('recoveryStatus').textContent='Sending a secure continuation link…';
+ $('resumeGateError').textContent='We could not restore saved access here. Use the email link below to continue later.';
+ recoverBusy=false;$('continueExistingBtn').disabled=false;
+}
+async function sendRecoveryLink(){
+ if(recoverBusy||!emailGateState.unfinished||emailGateState.email!==enteredEmail())return;
+ recoverBusy=true;$('emailRecoveryBtn').disabled=true;
+ $('emailRecoveryError').textContent='';$('emailRecoveryStatus').textContent='Requesting your secure link…';
  try{
   await checkoutRequest('create-order?mode=recover',{email:enteredEmail()});
-  $('recoveryStatus').textContent='If your assessment exists, we will email your private continuation link. Check your inbox and Spam folder. If it does not arrive, contact support.';
- }catch(e){$('resumeGateError').textContent=e.message;$('recoveryStatus').textContent='';}
- finally{recoverBusy=false;$('continueExistingBtn').disabled=false;}
+  $('emailRecoveryStatus').textContent='If your assessment is unfinished, check your inbox and Spam folder. A link requested recently may already be on its way.';
+ }catch(e){$('emailRecoveryError').textContent=e.message;$('emailRecoveryStatus').textContent='';}
+ finally{recoverBusy=false;$('emailRecoveryBtn').disabled=false;}
 }
 async function loadRazorpayCheckout(){
  if(window.Razorpay)return;
@@ -777,6 +805,7 @@ $('legacyResumeBtn').addEventListener('click',()=>{
  if(!validCheckoutEmail())return;
  // An explicit click opens the original origin so it can read its OWN saved
  // checkout. The old origin exchanges that proof for a short-lived transfer link.
+ document.documentElement.classList.add('access-restoring');
  location.assign('https://aiearlycareerguide-professionals.vercel.app/#transfer='+encodeURIComponent(email));
 });
 $('changeCheckoutEmail').addEventListener('click',()=>show('emailGate'));
@@ -785,6 +814,7 @@ $('checkoutConsent').addEventListener('change',()=>{syncCheckout();$('checkoutEr
 $('applyCoupon').addEventListener('click',applyCoupon);
 $('payBtn').addEventListener('click',payAndContinue);
 $('continueExistingBtn').addEventListener('click',continueExisting);
+$('emailRecoveryBtn').addEventListener('click',sendRecoveryLink);
 $('recoverPaymentBtn').addEventListener('click',recoverPayment);
 $('checkoutBack').addEventListener('click',()=>show('emailGate'));
 try{
@@ -803,8 +833,9 @@ try{const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||localStorage.getItem
 renderPreviousSessions();syncCheckout();
 
 // The link uses a fragment, so tokens never appear in server request URLs.
+function finishAccessRestore(){document.documentElement.classList.remove('access-restoring');}
 async function redeemEmailLinkIfPresent(){
- const match=location.hash.match(/^#access=(.+)$/);if(!match)return;
+ const match=location.hash.match(/^#access=(.+)$/);if(!match){finishAccessRestore();return;}
  const token=decodeURIComponent(match[1]);history.replaceState(null,'',location.pathname+location.search);
  $('resumeError').textContent='';
  try{
@@ -817,6 +848,7 @@ async function redeemEmailLinkIfPresent(){
    show('welcome');await resumeLive();
   }else{storeSession(null);showConfirmationNotice('sent');show('profile');render();}
  }catch(e){show('emailGate');$('checkoutEmail').value='';emailGateState={email:null,unfinished:false,sameDevice:false,sessionId:null};$('emailGateError').textContent=e.message+' Enter your email to check for an unfinished assessment.';}
+ finally{finishAccessRestore();}
 }
 // An explicit transfer request is processed on the former Vercel address.
 // Never assume access from the email in the URL: local purchase/session proof
@@ -824,13 +856,13 @@ async function redeemEmailLinkIfPresent(){
 async function transferOriginalPurchaseIfRequested(){
  const match=location.hash.match(/^#transfer=(.+)$/);if(!match)return false;
  history.replaceState(null,'',location.pathname+location.search);
- if(location.hostname!=='aiearlycareerguide-professionals.vercel.app')return false;
+ if(location.hostname!=='aiearlycareerguide-professionals.vercel.app'){finishAccessRestore();return false;}
  let email='';try{email=decodeURIComponent(match[1]).trim().toLowerCase();}catch{}
  const purchase=purchaseForEmail(email),saved=savedSessionForEmail(email);
  if(!purchase&&!saved){
   show('emailGate');$('checkoutEmail').value=email;
-  $('emailGateError').textContent='This address has no saved access in this browser. Use your secure email link, or return to the browser you originally used.';
-  return true;
+  $('emailGateError').textContent='This browser has no saved access for that email. Return to your branded website and request a secure email link.';
+  finishAccessRestore();return true;
  }
  show('emailGate');$('emailGateStatus').textContent='Restoring access on your branded website…';
  try{
@@ -842,6 +874,7 @@ async function transferOriginalPurchaseIfRequested(){
  }catch(e){
   $('checkoutEmail').value=email;$('emailGateStatus').textContent='';
   $('emailGateError').textContent=e.message+' Please use your secure assessment email link if this browser no longer has the original purchase.';
+  finishAccessRestore();
  }
  return true;
 }

@@ -39,12 +39,13 @@ class DB{
   const result=await fn(tx);for(const op of ops)await op();return result;
  }
 }
-let outgoing=[];let payments=new Map();let orderNum=0;
+let outgoing=[];let payments=new Map();let orderNum=0;let failNextResend=false;
 const realFetch=globalThis.fetch;
 globalThis.__checkoutTestDb=new DB();
 globalThis.fetch=async(url,options={})=>{
  const text=String(url);
  if(text.includes('api.resend.com/emails')){
+  if(failNextResend){failNextResend=false;return {ok:false,status:503,json:async()=>({name:'provider_unavailable'})};}
   const body=JSON.parse(options.body);outgoing.push(body);
   return {ok:true,status:200,json:async()=>({id:`email_${outgoing.length}`})};
  }
@@ -91,7 +92,7 @@ test('one-use links cannot be forged or reused and never grant access from email
  const order=(await call(orderHandler,{email:'new@example.com',couponCode:'BONNEY100',consent:true})).body;
  const html=outgoing[0].html;const link=html.match(/#access=([^"']+)/)[1];
  assert.equal(parseAccessLink(link).orderId,order.orderId);
- assert.throws(()=>parseAccessLink(link.replace(/.$/,'0')),/invalid|expired/);
+ assert.throws(()=>parseAccessLink(link.slice(0,-1)+(link.endsWith('0')?'1':'0')),/invalid|expired/);
  const first=await call(start,{accessLink:link});
  assert.equal(first.statusCode,200);assert.equal(first.body.email,'new@example.com');
  assert.equal(first.body.checkoutNonce,recoveredCheckoutProof(order.orderId));
@@ -236,4 +237,108 @@ test('browser stores verified purchases by email and can use saved-session proof
  assert.match(html,/function savedSessionForEmail/);
  assert.match(html,/sessionProof=saved/);
  assert.match(html,/function rememberPurchase/);
+});
+
+test('original-domain transfer requires saved purchase proof and issues a one-use branded access link',async()=>{
+ STORE.clear();outgoing=[];seedCoupon();
+ const purchase=(await call(orderHandler,{email:'transfer@example.com',couponCode:'BONNEY100',consent:true})).body;
+ const noProof=await call(start,{transferToBranded:true,paidOrder:{orderId:purchase.orderId,checkoutNonce:'0'.repeat(64)}});
+ assert.equal(noProof.statusCode,401);
+ const minted=await call(start,{transferToBranded:true,paidOrder:{orderId:purchase.orderId,checkoutNonce:purchase.checkoutNonce}});
+ assert.equal(minted.statusCode,200);
+ assert.match(minted.body.transferUrl,/^https:\/\/www\.aiearlycareerguide\.com\/professionals#access=/);
+ const token=decodeURIComponent(minted.body.transferUrl.split('#access=')[1]);
+ const parsed=parseAccessLink(token);
+ assert.equal(parsed.orderId,purchase.orderId);
+ assert.ok(parsed.expiresAt-now()<=5*60000);
+ const redeemed=await call(start,{accessLink:token});
+ assert.equal(redeemed.statusCode,200);
+ assert.equal(redeemed.body.email,'transfer@example.com');
+ const replay=await call(start,{accessLink:token});
+ assert.equal(replay.statusCode,401);
+});
+
+test('original-domain transfer can use a valid existing session if checkout proof was lost',async()=>{
+ STORE.clear();outgoing=[];seedCoupon();
+ const purchase=(await call(orderHandler,{email:'session-transfer@example.com',couponCode:'BONNEY100',consent:true})).body;
+ const sid='9'.repeat(32),sessionToken='a'.repeat(64);
+ STORE.get(`${ORDERS}/${purchase.orderId}`).sessionId=sid;
+ STORE.set(`professionalAssessments_v1/${sid}`,{status:'active',paid:true,email:'session-transfer@example.com',
+  tokenHash:sha(sessionToken),accessExpiresAt:{toMillis:()=>now()+86400000,toDate:()=>new Date(now()+86400000)}});
+ const denied=await call(start,{transferToBranded:true,sessionProof:{orderId:purchase.orderId,sessionId:sid,sessionToken:'b'.repeat(64)}});
+ assert.equal(denied.statusCode,401);
+ const valid=await call(start,{transferToBranded:true,sessionProof:{orderId:purchase.orderId,sessionId:sid,sessionToken}});
+ assert.equal(valid.statusCode,200);
+ const access=decodeURIComponent(valid.body.transferUrl.split('#access=')[1]);
+ const accepted=await call(start,{accessLink:access});
+ assert.equal(accepted.statusCode,200);
+ assert.equal(accepted.body.sessionId,sid);
+ assert.notEqual(accepted.body.sessionToken,sessionToken);
+ assert.equal(STORE.get(`professionalAssessments_v1/${sid}`).tokenHash,sha(accepted.body.sessionToken));
+});
+
+test('returning screen clearly separates direct continuation, old-origin transfer, and email recovery',()=>{
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ assert.match(html,/id="legacyResumeBtn"/);
+ assert.match(html,/transferOriginalPurchaseIfRequested/);
+ assert.match(html,/transferToBranded:true/);
+ assert.match(html,/Email secure link to complete later/);
+ assert.match(html,/access-restoring/);
+ assert.match(html,/Continue with the assessment/);
+ assert.doesNotMatch(html,/Continue from Original Website/);
+});
+
+
+test('a failed Resend delivery does not exhaust the recipient allowance',async()=>{
+ STORE.clear();outgoing=[];seedCoupon('TESTFREE');
+ const order=(await call(orderHandler,{email:'retry-failed@example.com',couponCode:'TESTFREE',consent:true})).body;
+ assert.equal(order.amount,0);
+ const saved=STORE.get(`${ORDERS}/${order.orderId}`);
+ saved.accessEmailSentAt=null;saved.accessLinkHash=null;
+ failNextResend=true;
+ const failed=await call(orderHandler,{email:'retry-failed@example.com'},'recover');
+ assert.equal(failed.statusCode,502);
+ const recipientDocs=[...STORE.entries()].filter(([key])=>key.startsWith('professionalRecoverySentDaily_v2/'));
+ assert.equal(recipientDocs.length,1);
+ assert.equal(recipientDocs[0][1].sentCount||0,0);
+ assert.equal(recipientDocs[0][1].leaseUntil,null);
+ const retry=await call(orderHandler,{email:'retry-failed@example.com'},'recover');
+ assert.equal(retry.statusCode,200);
+ const recipient=STORE.get(recipientDocs[0][0]);
+ assert.equal(recipient.sentCount,1);
+ assert.equal(outgoing.length,2); // Initial confirmation plus the successful recovery.
+ const recent=await call(orderHandler,{email:'retry-failed@example.com'},'recover');
+ assert.equal(recent.statusCode,200);
+ assert.equal(STORE.get(recipientDocs[0][0]).sentCount,1);
+ assert.equal(outgoing.length,2);
+});
+
+test('recovery safety cap counts successful sends and limits rapid repeated requests',async()=>{
+ STORE.clear();outgoing=[];seedCoupon('TESTFREE');
+ const order=(await call(orderHandler,{email:'limited@example.com',couponCode:'TESTFREE',consent:true})).body;
+ const saved=STORE.get(`${ORDERS}/${order.orderId}`);
+ saved.accessEmailSentAt=null;saved.accessLinkHash=null;
+ let first=await call(orderHandler,{email:'limited@example.com'},'recover');
+ assert.equal(first.statusCode,200);
+ const [key,doc]=[...STORE.entries()].find(([key])=>key.startsWith('professionalRecoverySentDaily_v2/'));
+ assert.equal(doc.sentCount,1);
+ doc.sentCount=8;doc.leaseUntil=null;
+ const limited=await call(orderHandler,{email:'limited@example.com'},'recover');
+ assert.equal(limited.statusCode,429);
+ assert.match(limited.body.error,/email limit/i);
+});
+
+
+test('resume page uses a primary continue path, optional compact email-later action and seamless restore overlay',()=>{
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ assert.match(html,/id="legacyResumeBtn"[^>]*>Continue with the assessment/);
+ assert.match(html,/id="continueExistingBtn"[^>]*>Continue with the assessment/);
+ assert.match(html,/class="resume-later"/);
+ assert.match(html,/id="emailRecoveryBtn"[^>]*>Email secure link to complete later/);
+ assert.match(html,/function sendRecoveryLink/);
+ assert.match(html,/function finishAccessRestore/);
+ assert.match(html,/access-restoring #accessRestoreOverlay/);
+ const direct=html.slice(html.indexOf('async function continueExisting(){'),html.indexOf('async function sendRecoveryLink(){'));
+ assert.doesNotMatch(direct,/mode=recover/);
+ assert.match(direct,/Opening your saved assessment/);
 });

@@ -41,21 +41,42 @@ export default async function handler(req,res){
    if(!process.env.RESEND_API_KEY||!process.env.REPORT_FROM_EMAIL){
     throw new ApiError(503,'Email recovery is not configured yet. Please contact support.');
    }
-   const day=new Date().toISOString().slice(0,10),ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].slice(0,80);
-   const limitRef=database.collection('professionalRecoveryDaily_v1').doc(`${day}_${sha(`${email}|${ip}|${process.env.RAZORPAY_KEY_SECRET}`).slice(0,35)}`);
+   const now=Date.now(),day=new Date(now).toISOString().slice(0,10);
+   const ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].slice(0,80);
+   // The IP cap counts attempted requests to limit abuse, even for unknown addresses.
+   // Per-recipient caps count only emails accepted by Resend, not failed attempts.
+   const ipRef=database.collection('professionalRecoveryIpDaily_v2').doc(`${day}_${sha(`${ip}|${process.env.RAZORPAY_KEY_SECRET}`).slice(0,35)}`);
    await database.runTransaction(async tx=>{
-    const d=await tx.get(limitRef),count=Number(d.data()?.count||0);
-    if(count>=5)throw new ApiError(429,'Too many requests today. Please contact support if your link has not arrived.');
-    tx.set(limitRef,{count:count+1,retainUntil:new Date(Date.now()+3*86400000)},{merge:true});
+    const d=await tx.get(ipRef),count=Number(d.data()?.count||0);
+    if(count>=40)throw new ApiError(429,'Too many email requests from this connection today. Contact support if you need access.');
+    tx.set(ipRef,{count:count+1,retainUntil:new Date(now+3*86400000)},{merge:true});
    });
    const pending=await findIncompleteOrder(database,email);
-   // Same generic response whether or not an order exists: no customer enumeration.
-   if(pending){
-    try{await sendAccessEmail(pending.ref,{resend:true});}
-    catch(err){console.warn('Access-email request could not be delivered',err.message);
-     throw new ApiError(502,'We could not send your secure link. Please try again or contact support.');}
+   const generic='If an unfinished assessment exists for this email, check your inbox and Spam folder. A recently requested link may already be on its way.';
+   if(!pending)return output(res,200,{message:generic});
+   const sendRef=database.collection('professionalRecoverySentDaily_v2').doc(`${day}_${sha(`${email}|${ip}|${process.env.RAZORPAY_KEY_SECRET}`).slice(0,35)}`);
+   const permission=await database.runTransaction(async tx=>{
+    const d=await tx.get(sendRef),data=d.data()||{},count=Number(data.sentCount||0);
+    if(count>=8)throw new ApiError(429,'You have reached today’s email limit. Please use a link already sent or contact support.');
+    if(data.leaseUntil?.toMillis?.()>now||data.lastSentAt?.toMillis?.()>now-120000)return 'recent';
+    tx.set(sendRef,{leaseUntil:new Date(now+25000),retainUntil:new Date(now+3*86400000)},{merge:true});
+    return 'send';
+   });
+   if(permission==='recent')return output(res,200,{message:generic});
+   try{
+    const sent=await sendAccessEmail(pending.ref,{resend:true});
+    if(sent.status==='sent'){
+     await database.runTransaction(async tx=>{
+      const d=await tx.get(sendRef),count=Number(d.data()?.sentCount||0);
+      tx.set(sendRef,{sentCount:count+1,lastSentAt:new Date(),leaseUntil:null,retainUntil:new Date(now+3*86400000)},{merge:true});
+     });
+    }else await sendRef.set({leaseUntil:null},{merge:true});
+   }catch(err){
+    await sendRef.set({leaseUntil:null},{merge:true}).catch(()=>{});
+    console.warn('Access-email request was not accepted by Resend',err.message);
+    throw new ApiError(502,'We could not send your secure link. Please try again shortly or contact support.');
    }
-   return output(res,200,{message:'If an unfinished paid or complimentary assessment exists for this email, you will receive a private link shortly. Check Spam as well.'});
+   return output(res,200,{message:generic});
   }
   if(mode==='quote'){
    // Consent must precede a coupon lookup. Pricing is still independently recomputed at payment.
