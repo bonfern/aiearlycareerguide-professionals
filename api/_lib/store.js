@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import admin from 'firebase-admin';
 import {ApiError,sha,safeEqual,validateAnswer} from './security.js';
 import {loadFirebaseServiceAccount} from './firebase-config.js';
-import {competencyProgress} from './interview-logic.js';
+import {competencyProgress,earlyFinishEligibility} from './interview-logic.js';
 export {ApiError,sha,safeEqual,validateAnswer};
 
 export const COLLECTION = 'professionalAssessments_v1';
@@ -72,11 +72,12 @@ export function publicProgress(session){
  const blueprint=session.blueprint||[];
  if(!blueprint.length)return {assessed:0,total:0};
  const {assessed,total}=competencyProgress(blueprint,session.history||[]);
- return {assessed,total};
+ const eligibility=earlyFinishEligibility(blueprint,session.history||[]);
+ return {assessed,total,sampled:eligibility.sampled,answered:eligibility.answered,canFinish:eligibility.eligible};
 }
 export function safeState(session){
  return {status:session.status,profile:session.profile,answered:session.history?.length||0,
   history:(session.history||[]).map(({question,category,answer,competencyId,subskill,questionType})=>({question,category,answer,competencyId,subskill,questionType})),
   question:publicQuestion(session.currentQuestion),progress:publicProgress(session),
-  accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null};
+  completionMode:session.completionMode||'full',accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null};
 }

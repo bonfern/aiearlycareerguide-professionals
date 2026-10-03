@@ -43,3 +43,15 @@ Use `npm test` (Node.js 20+) to run mocked logic/API tests. You must still test 
 ## Not included in this release
 
 The planned **₹499 Razorpay checkout, optional discount coupons, password-free email entry and final report email via Resend** remain planned work. This is still a private beta requiring the preview access code. No new payment or email code is added in this update.
+
+
+## V5 early-finish improvement
+
+After at least 8 graded answers across 3 different mapped skills, an existing tester can use **Finish Assessment & Get Preliminary Report**. This ends the active session, preserves all saved answers, and enables the normal report endpoint. The report labels unassessed skills as Not assessed and other incomplete skills as limited evidence. The full assessment still follows 2–3 questions per skill. The question regeneration retry fix is included in this package. The backend limits accidental repeat requests; finishing does not create a new paid assessment.
+
+
+## V6 — Clearer, shorter AI questions (combined with the pending V5 fixes)
+
+This is a **single combined update**. It retains the question-regeneration fix and the optional early finish after at least eight answers across three skill areas. Do **not** upload an older V5 patch after this one.
+
+New questions use everyday English and one decision per question. The model aims for 25–40 words per question and 5–12 words per option. Advanced questions remain challenging because of the choices, not because of long reading passages. The server rejects unusually long questions/options and automatically requests a shorter replacement when possible. The wording update applies only to **newly generated questions**; if a long question is already saved in an existing session, finish or answer that question and the next newly generated question will use the updated rules. No environment-variable changes are needed.

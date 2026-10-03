@@ -45,8 +45,9 @@ export function validateReport(report,blueprint=[],history=[]){
     if(Object.values(result).some(x=>!x))throw Error('Incomplete skill assessment.');
     if(!Array.isArray(item.actions)||item.actions.length<2||item.actions.length>3)throw Error('Provide 2–3 actions for every skill.');
     result.actions=item.actions.map(x=>{const a=cleanString(x,500);if(!a)throw Error('Invalid action.');return a;});
+    if(score.answered===0){result.evidence='No assessment questions were answered for this competency.';result.gap='Not assessed — no skill gap or strength can be inferred.';}
     result.correct=score.correct;result.tested=score.answered;
-    result.evidenceLevel=!score.resolved?'Insufficient evidence':score.correct===score.answered?'Consistently correct in this test':score.correct===0?'Gap indicated by these questions':'Mixed evidence in this test';
+    result.evidenceLevel=score.answered===0?'Not assessed':!score.resolved?'Limited evidence':score.correct===score.answered?'Consistently correct in this test':score.correct===0?'Gap indicated by these questions':'Mixed evidence in this test';
     return result;
   });
   return {summary,skillAssessments,strengths:check(report.strengths,1,5,['strength','evidence']),achievements:check(report.achievements,0,4,['achievement','evidence']),developmentAreas:check(report.developmentAreas,1,4,['area','why','nextStep']),careerDirections:check(report.careerDirections,1,3,['direction','rationale','toValidate']),actionPlan,evidenceGaps};
@@ -71,7 +72,9 @@ export async function generateReport(profile,history,blueprint=[]){
       'Use short, friendly, practical English. Interpret chosen options as declared preferences, not proof of ability. NEVER invent employers, specific projects, achievements, metrics, qualifications, salary data or market forecasts.',
       'Provide a separate skillAssessments entry for EVERY mapped competency, same id and name and order. State the target-role benchmark, cite exact choice-based test evidence, specify any demonstrated gap, and supply 2–3 SPECIFIC learning actions, a practice assignment and a measurable success indicator for THAT SKILL.',
       'Do not infer real-world competence from test answers. The measured result will be added by the server; your prose must distinguish test evidence from verified workplace performance.',
+      'CRITICAL: If a mapped competency has NO graded answers, label it NOT ASSESSED and do not claim the person has a gap or a strength in it. Provide only optional steps to assess it later. With one answer, mark findings as preliminary. Identify limited coverage at the start of the summary when any skill is unassessed.',
       'If the person answered incorrectly or Not sure, use the specific tested subskill and correct-option rationale to create actionable remediation. If correct throughout, recommend a realistic next-level application and note workplace evidence still needed.',
+      'Evidence gaps must include unanswered high-priority skill areas before other optional clarifications. For unassessed skills, gap text must say Not assessed rather than invent a competency deficit.',
       'No vague advice such as improve communication, take a course or gain experience; include a concrete exercise, practical tool/framework if appropriate, and an observable artefact or outcome.',
       'In strengths, cite the exact supporting response or profile information and mark confidence limitations when there is no illustrative example.',
       'Only populate achievements if a concrete example or outcome was actually supplied. Empty achievement arrays are valid and preferable to fabricated stories.',

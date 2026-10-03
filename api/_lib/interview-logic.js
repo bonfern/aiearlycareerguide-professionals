@@ -1,6 +1,6 @@
 // V4: Role-specific, evidence-led competency assessment.
 // Profile and interview responses are untrusted data, never instructions.
-export const MAX_QUESTIONS=100; // Safety ceiling, NOT a target or visible counter.
+export const MAX_QUESTIONS=60; // Emergency ceiling; normal 8–16-skill assessments need no more than 48 graded answers.
 export const MIN_QUESTIONS=0;  // Completion depends on evidence coverage, not a fixed minimum.
 const PROFILE_KEYS=[
  'profileGroup','employmentStatus','currentJobTitle','currentIndustry','currentFunction','businessStage','businessFocus',
@@ -67,6 +67,14 @@ export function competencyProgress(blueprint=[],history=[]){
  });
  return {skills,assessed:skills.filter(s=>s.resolved).length,total:skills.length};
 }
+// Early exit is explicitly an incomplete assessment, never equivalent to full coverage.
+// Permit this only after enough real answers exist to produce some actionable findings.
+export function earlyFinishEligibility(blueprint=[],history=[]){
+ const progress=competencyProgress(blueprint,history);
+ const sampled=progress.skills.filter(s=>s.answered>0).length;
+ const answered=history.filter(h=>typeof h.correct==='boolean').length;
+ return {eligible:blueprint.length>=8&&answered>=8&&sampled>=3,answered,sampled,total:progress.total,fullyAssessed:progress.assessed};
+}
 export function nextCompetency(blueprint,history){
  const progress=competencyProgress(blueprint,history);
  if(history.length>=MAX_QUESTIONS)return null;
@@ -94,8 +102,13 @@ export function instruction(profile,history,blueprint,target){
   'Return strict JSON only in the prescribed schema. Ask ONE question at a time, with FOUR plausible distinct options and a FIFTH option exactly "Not sure".',
   'The first four options must be realistic alternatives, with exactly ONE defensibly best answer at answerKey index 0–3. Rotate its position; do not make it obviously longer or more polished.',
   'Technical skills: test conceptual knowledge AND role-realistic applied judgment. Behavioural skills: test judgment through challenging, credible workplace or graduate-appropriate scenarios.',
-  'Include concrete constraints, trade-offs, decisions and consequences appropriate to the target role and seniority. Avoid trivia and obvious morality answers.',
-  'Use plain, professional English. A person should be able to answer without typing. Never ask self-ratings like "How good are you at leadership?".',
+  'Test real decisions and trade-offs for the target role, but make each question easy to READ. Difficulty comes from the choices, not complex wording.',
+  'STRICT PLAIN-LANGUAGE RULES: Write at about a Grade 7–9 reading level. Use everyday English, familiar words, short active sentences and one decision per question. Avoid management buzzwords, dense jargon, double negatives, long introductions and nested conditions. Keep essential technical terms only when the target role truly requires them.',
+  'QUESTION LENGTH: Aim for 25–40 words in total (including a brief situation). Never exceed 55 words. Use at most two short sentences for the situation, then one crisp question. Mention at most two constraints, and include only facts needed to answer.',
+  'CHOICE LENGTH: Aim for 5–12 words per choice; never exceed 18 words. Start choices with an action verb when practical. Keep all four choices similar in length, natural and distinct. The fifth choice must be exactly "Not sure".',
+  'Do not ask more than ONE thing at once. Each answer should be one clear decision. A person must be able to understand the question on the first reading without needing to decode it.',
+  'A person should be able to answer by selecting an option, without typing. Never ask self-ratings like "How good are you at leadership?".',
+  'For advanced questions, increase the difficulty of the DECISION or trade-off, not the reading level or number of details. Even director-level scenarios must be short and easy to understand.',
   'For any answer that is wrong, the rationale must concisely state why the best choice is best. The rationale is PRIVATE until the completed report.',
   'questionKind must equal the requested kind; difficulty must equal the requested difficulty; category must equal the target competency name and competencyId must match its ID.',
   'Set options as five short statements including final "Not sure". Do not include "Other" in objectively graded questions.',
@@ -127,8 +140,8 @@ export function cleanModelResult(raw,blueprint,target,history){
  if(q.competencyId!==skill.id||q.category!==skill.name)throw Error('Wrong competency.');
  if(q.questionKind!==nextQuestionType(skill,history))throw Error('Wrong question kind.');
  if(q.difficulty!==nextDifficulty(skill,history))throw Error('Wrong difficulty.');
- if(typeof q.text!=='string'||q.text.trim().length<25||q.text.length>750)throw Error('Question lacks a credible scenario.');
- if(!Array.isArray(q.options)||q.options.length!==5||q.options.some(s=>typeof s!=='string'||s.trim().length<3||s.length>260))throw Error('Invalid options.');
+ if(typeof q.text!=='string'||q.text.trim().length<20||q.text.length>440||q.text.trim().split(/\s+/).length>65)throw Error('Question is too long or too vague. Use plain English and no more than 55 words.');
+ if(!Array.isArray(q.options)||q.options.length!==5||q.options.some(s=>typeof s!=='string'||s.trim().length<3||s.length>160||s.trim().split(/\s+/).length>20))throw Error('Invalid options: too long or unclear. Use short, direct choices.');
  const options=q.options.map(s=>s.trim());
  if(new Set(options.map(s=>s.toLowerCase())).size!==5||options[4]!=='Not sure')throw Error('Options must be distinct and include Not sure.');
  if(!Number.isInteger(q.answerKey)||q.answerKey<0||q.answerKey>3)throw Error('Invalid answer key.');

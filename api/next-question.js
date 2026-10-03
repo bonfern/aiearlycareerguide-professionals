@@ -11,11 +11,13 @@ export default async function handler(req,res){
    const snap=await tx.get(ref);if(!snap.exists)throw new ApiError(401,'Session no longer available.');
    const s=snap.data();
    if(s.currentQuestion)return {kind:'existing',state:safeState(s)};
-   if(s.status==='complete')return {kind:'done',answered:s.history.length,progress:publicProgress(s)};
+   if(s.status==='complete')return {kind:'done',answered:s.history.length,progress:publicProgress(s),completionMode:s.completionMode||'full'};
    const target=s.blueprint?.length?nextCompetency(s.blueprint,s.history):null;
    if((s.blueprint?.length&&!target)||s.history.length>=MAX_QUESTIONS){
-    tx.update(ref,{status:'complete',updatedAt:new Date()});
-    return {kind:'done',answered:s.history.length,progress:publicProgress(s)};
+    const progress=publicProgress(s);
+    const completionMode=progress.total>0&&progress.assessed===progress.total?'full':'early';
+    tx.update(ref,{status:'complete',completionMode,updatedAt:new Date()});
+    return {kind:'done',answered:s.history.length,progress,completionMode};
    }
    if((s.callsUsed||0)>=MAX_AI_CALLS)throw new ApiError(429,'AI request limit reached. Contact the assessment administrator.');
    const now=Date.now(),lease=s.generationLease;
@@ -25,7 +27,7 @@ export default async function handler(req,res){
    return {kind:'generate',profile:s.profile,history:s.history,blueprint:s.blueprint||null,target};
   });
   if(result.kind==='existing')return output(res,200,{done:false,...result.state});
-  if(result.kind==='done')return output(res,200,{done:true,status:'complete',answered:result.answered,progress:result.progress});
+  if(result.kind==='done')return output(res,200,{done:true,status:'complete',answered:result.answered,progress:result.progress,completionMode:result.completionMode});
   const generated=await generateQuestion(result.profile,result.history,result.blueprint,result.target);
   const saved=await db().runTransaction(async tx=>{
    const snap=await tx.get(ref),s=snap.data();

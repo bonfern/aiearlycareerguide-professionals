@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Script,runInNewContext} from 'node:vm';
-import {MAX_QUESTIONS,groupFromProfile,validatePayload,validateBlueprint,competencyProgress,nextCompetency,nextQuestionType,cleanModelResult} from '../api/_lib/interview-logic.js';
+import {MAX_QUESTIONS,groupFromProfile,validatePayload,validateBlueprint,competencyProgress,earlyFinishEligibility,nextCompetency,nextQuestionType,cleanModelResult} from '../api/_lib/interview-logic.js';
 import {ApiError,validateAnswer} from '../api/_lib/security.js';
 import {generateQuestion} from '../api/_lib/ai.js';
 const example={employmentStatus:'Employed',currentJobTitle:'Process Excellence AVP',qualification:'Master’s degree',skills:'Change management',careerObjective:'Get promoted',targetJobTitle:'Director Transformation'};
@@ -32,7 +32,7 @@ test('career-stage profile routing and editable target role',()=>{
  assert(!html.includes('sk-proj-'));
 });
 test('role-specific map covers both skill families and rejects weak plans',()=>{
- assert.equal(MAX_QUESTIONS,100);assert.equal(validateBlueprint(blueprint).length,9);
+ assert.equal(MAX_QUESTIONS,60);assert.equal(validateBlueprint(blueprint).length,9);
  assert.throws(()=>validateBlueprint(blueprint.slice(0,3)),/8–16/);
  assert.throws(()=>validateBlueprint([...blueprint.slice(0,8),blueprint[0]]),/repeated/);
 });
@@ -55,10 +55,19 @@ test('strict AI question validation and server-only grading data',()=>{
  // The transport layer omits both private fields in its publicQuestion function.
  const storeCode=readFileSync(new URL('../api/_lib/store.js',import.meta.url),'utf8');
  assert.match(storeCode,/const \{answerKey,rationale,\.\.\.safe\}=question/);
- assert.match(storeCode,/return \{assessed,total\}/);
+ assert.match(storeCode,/canFinish:eligibility\.eligible/);
  assert.throws(()=>cleanModelResult({...questionFor(blueprint[0],'knowledge'),question:{...questionFor(blueprint[0],'knowledge').question,options:['A','B','C','D','E']}},null,null,[]),/Invalid options|Not sure/);
  assert.equal(validateAnswer(first.question,first.question.options[1]),first.question.options[1]);
  assert.throws(()=>validateAnswer(first.question,'My own invented answer'),ApiError);
+});
+test('short, clear question instructions and length safeguards',()=>{
+ const {question:base}=questionFor(blueprint[0],'knowledge');
+ const normal=cleanModelResult({competencies:blueprint,question:base},null,null,[]);
+ assert.match(normal.question.text,/Which action/);
+ const tooLongQuestion='You lead a team and need to make an important choice today. '.repeat(9)+'What should you do?';
+ assert.throws(()=>cleanModelResult({competencies:blueprint,question:{...base,text:tooLongQuestion}},null,null,[]),/too long/);
+ const longOption='Work with all the stakeholders and carefully consider all the options before you decide to do anything significant about the issue';
+ assert.throws(()=>cleanModelResult({competencies:blueprint,question:{...base,options:[longOption,...base.options.slice(1)]}},null,null,[]),/too long/);
 });
 test('high reasoning Responses call uses strict JSON without leaking the key',async()=>{
  const old=globalThis.fetch,key=process.env.OPENAI_API_KEY,model=process.env.OPENAI_MODEL;
@@ -76,4 +85,21 @@ test('Firebase accepts direct JSON credentials',async()=>{
  const a={project_id:'prof-demo',client_email:'test@example.com',private_key:'-----BEGIN PRIVATE KEY-----\nMOCK\n-----END PRIVATE KEY-----\n'};
  assert(firebaseConfigured({FIREBASE_SERVICE_ACCOUNT_JSON:JSON.stringify(a)}));
  assert.deepEqual(loadFirebaseServiceAccount({FIREBASE_SERVICE_ACCOUNT_JSON:JSON.stringify(a)}),a);
+});
+
+test('early-finish eligibility requires breadth, not just repeated answers from one skill',()=>{
+ const one=Array.from({length:8},()=>answer(blueprint[0],'scenario',true));
+ assert.equal(earlyFinishEligibility(blueprint,one).eligible,false);
+ const wide=[...Array.from({length:3},()=>answer(blueprint[0],'scenario',true)),...Array.from({length:3},()=>answer(blueprint[1],'scenario',true)),...Array.from({length:2},()=>answer(blueprint[2],'scenario',false))];
+ const state=earlyFinishEligibility(blueprint,wide);
+ assert.equal(state.eligible,true);assert.equal(state.sampled,3);assert.equal(state.answered,8);
+ assert.equal(nextCompetency(blueprint,wide).id,'s1'); // synthetic scenarios lack the required technical knowledge check
+});
+test('early-finish endpoint marks session incomplete and clears outstanding generation',()=>{
+ const code=readFileSync(new URL('../api/finish-assessment.js',import.meta.url),'utf8');
+ assert.match(code,/earlyFinishEligibility/);
+ assert.match(code,/completionMode:'early'/);
+ assert.match(code,/currentQuestion:null,generationLease:null/);
+ assert.match(html,/id="finishEarlyBtn"/);
+ assert.match(html,/finishEarly/);
 });

@@ -21,3 +21,11 @@ test('report generation sends graded answers privately and uses high reasoning',
  try{const r=await generateReport({careerObjective:'Get promoted'},history,blueprint);assert.equal(r.skillAssessments.length,8);}
  finally{globalThis.fetch=old;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;}
 });
+
+test('unassessed and partially assessed skills are not called proven gaps',()=>{
+ const h=history.filter(x=>x.competencyId==='s1').slice(0,1);
+ const r=validateReport(report,blueprint,h);
+ assert.equal(r.skillAssessments[0].evidenceLevel,'Limited evidence');
+ assert.equal(r.skillAssessments[1].evidenceLevel,'Not assessed');
+ assert.equal(r.skillAssessments[1].tested,0);
+});
