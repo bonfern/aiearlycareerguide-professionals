@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs';
 import {Script,runInNewContext} from 'node:vm';
 import {MAX_QUESTIONS,groupFromProfile,validatePayload,validateBlueprint,competencyProgress,earlyFinishEligibility,nextCompetency,scoredHistory} from '../api/_lib/interview-logic.js';
 import {validateAssessmentBank,choosePreparedQuestion} from '../api/_lib/assessment-bank.js';
-import {generateAssessmentBank} from '../api/_lib/bank-generator.js';
+import {generateAssessmentBank,optionQuality,balanceAnswerPositions} from '../api/_lib/bank-generator.js';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const profile={employmentStatus:'Employed',currentJobTitle:'AVP Process Excellence',qualification:'Master\'s degree',skills:'Improvement, leadership',careerObjective:'Promotion',targetJobTitle:'Director Transformation'};
 const skills=[
@@ -14,7 +14,7 @@ const skills=[
 const extras=[{id:'u1',name:'Supplier risk',expectation:'Must be able to identify and respond to supplier risks before rollout.'},{id:'u2',name:'Budget ownership',expectation:'Must be able to set and control investment budgets responsibly.'}];
 const bank=skills.flatMap(skill=>[0,1,2].map((i)=>({competencyId:skill.id,category:skill.name,questionKind:i===0&&skill.type==='technical'?'knowledge':'scenario',difficulty:i===1?'advanced':'applied',
  text:`Your team has a difficult ${skill.name.toLowerCase()} decision. Which action would best protect the intended outcome in situation ${i+1}?`,
- options:['Check the evidence before choosing an action','Ask everyone to work longer without changing anything','Skip the review and immediately approve delivery','Wait until the risk has already caused damage','Not sure'],answerKey:i%4,
+ options:(()=>{const best='Compare risks and outcomes before deciding';const other=['Pilot with a smaller group before expanding','Seek senior agreement on the preferred approach','Introduce targeted training before wider rollout'];const arranged=[...other];arranged.splice(i%4,0,best);return [...arranged,'Not sure'];})(),answerKey:i%4,
  rationale:'Checking the evidence and comparing expected outcomes is the most reliable way to choose an action.',subskill:skill.subskills[i%2]})));
 const raw={targetRole:'Director Transformation',competencies:skills,untestedSkills:extras,questionBank:bank};
 const answer=(skill,i,correct)=>({competencyId:skill.id,questionType:i===0&&skill.type==='technical'?'knowledge':'scenario',correct,subskill:skill.subskills[i%2]});
@@ -110,4 +110,26 @@ test('an incomplete model response is internally regenerated',async()=>{
  };
  try{const plan=await generateAssessmentBank(profile);assert.equal(plan.questionBank.length,15);assert(calls>=2);}
  finally{globalThis.fetch=previous;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;if(model===undefined)delete process.env.ASSESSMENT_MODEL;else process.env.ASSESSMENT_MODEL=model;}
+});
+
+test('rejects giveaway distractors but accepts plausible competing actions',()=>{
+ const plausible={options:['Compare delivery risk before deciding','Pilot first with a smaller group','Seek sponsor agreement before scaling','Train the team before full rollout','Not sure']};
+ assert.equal(optionQuality(plausible),null);
+ assert.match(optionQuality({...plausible,options:['Compare delivery risk before deciding','Ignore the issue','Seek sponsor agreement before scaling','Train the team before full rollout','Not sure']}),/irresponsible/);
+ assert.match(optionQuality({...plausible,options:['Compare delivery risk before deciding','Pilot first with a smaller group','Never ask stakeholders about any problems','Train the team before full rollout','Not sure']}),/verbal clues/);
+ assert.match(optionQuality({...plausible,options:['Compare delivery risk before deciding','Pilot first with a smaller group','Seek sponsor agreement before scaling','Consider costs, dependencies, downstream stakeholders, risk impacts, employee preferences and rollout plans in detail before making any decision','Not sure']}),/similar in length/);
+});
+test('balances correct answer slots per competency without changing which answer is right',()=>{
+ const original=bank.map(q=>({...q,options:[...q.options]}));
+ const balanced=balanceAnswerPositions(original,skills,()=>0);
+ for(const skill of skills){
+  const expected=original.filter(q=>q.competencyId===skill.id);
+  const received=balanced.filter(q=>q.competencyId===skill.id);
+  assert.deepEqual(received.map(q=>q.answerKey),[0,1,2]);
+  for(let i=0;i<3;i++){
+   assert.equal(received[i].options[received[i].answerKey],expected[i].options[expected[i].answerKey]);
+   assert.equal(received[i].options[4],'Not sure');
+  }
+ }
+ assert.deepEqual(original,bank,'input must not be modified');
 });

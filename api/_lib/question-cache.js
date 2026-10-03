@@ -5,7 +5,7 @@ import {validateBlueprint} from './interview-logic.js';
 
 // Change when the blueprint, wording rules, grading rubric or bank layout changes.
 // This intentionally never reads or stores the candidate's responses.
-const BANK_VERSION='v7.2-shared-questions-2026-10';
+const BANK_VERSION='v18-challenging-decisions-2026-10';
 export const BANK_COLLECTION='professionalSharedQuestionBanks_v1';
 const CACHE_TTL_MS=90*24*60*60*1000;
 const LEASE_MS=140000;

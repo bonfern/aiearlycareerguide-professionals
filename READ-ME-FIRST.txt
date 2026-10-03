@@ -1,0 +1,12 @@
+Career Professionals V18: Stronger Answer Choices
+
+UPLOAD THESE 3 REPLACEMENT FILES TO YOUR PROFESSIONAL GITHUB REPOSITORY:
+- api/_lib/bank-generator.js
+- api/_lib/question-cache.js
+- tests/logic.test.js
+
+Do not upload READ-ME-FIRST.txt unless you want it for reference.
+Commit all three replacements and wait for Vercel Ready.
+Start a NEW assessment to see the tougher multiple-choice banks; ongoing assessments keep their previously saved bank.
+V18 changes the shared-bank version so matching new users share the newly generated bank instead of reusing earlier easy questions.
+No new API endpoints, environment variables or third-party libraries.

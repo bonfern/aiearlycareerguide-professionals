@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import {ApiError} from './security.js';
 import {groupFromProfile,validateBlueprint} from './interview-logic.js';
 import {BANK_SCHEMA,validateAssessmentBank} from './assessment-bank.js';
@@ -23,16 +24,23 @@ const MAP_INSTRUCTIONS=[
  'Do not generate questions yet. Return only the required structured data.'
 ].join('\n');
 const BANK_INSTRUCTIONS=[
- 'Create three clear, short, multiple-choice competency questions PER supplied skill, grouped in order.',
- 'Do NOT create, rename or change skills. Copy the exact competencyId and category=name from the supplied skills.',
- 'For technical skills: question 1 is knowledge/applied; question 2 is scenario/advanced; question 3 is scenario/applied.',
- 'For behavioural skills: all three are scenarios; difficulties applied, advanced, applied.',
- 'Keep each question 20–40 simple English words, no more than 55; one clear decision.',
- 'Give exactly five short options: four credible distinct actions and the last exactly Not sure.',
- 'Set answerKey to the one best option, index 0–3, and include a private rationale of 25–250 characters.',
- 'Spread correct answers across positions and avoid obviously wrong alternatives.',
- 'Use different practical subskills for the three questions, and match role seniority.',
- 'Every category, competencyId, questionKind and difficulty must match the supplied skill and question position.',
+ 'Build a challenging but EASY-TO-READ competency assessment for the exact role and seniority provided.',
+ 'Create exactly THREE distinct multiple-choice questions PER supplied skill, in skill order. Do not alter any skill names or IDs.',
+ 'For technical skills: question 1 tests applied technical knowledge; question 2 is an advanced work scenario; question 3 tests a different applied subskill.',
+ 'For behavioural skills: use three short realistic situations, with the second involving a more demanding trade-off.',
+ 'Each question should be 20–40 everyday English words, at most 55. Use one clear decision and no more than two relevant constraints.',
+ 'The challenge is JUDGMENT, not difficult vocabulary. Match the complexity of the decision to the target job, especially for senior roles.',
+ 'Make options A–D FOUR PLAUSIBLE decisions that a reasonably competent person might actually consider. The fifth must be exactly Not sure.',
+ 'All four decisions must address the actual problem and sound professionally responsible; never use strawmen such as ignoring the issue, doing nothing, blindly approving, hiding risks, or waiting for harm.',
+ 'Make the WRONG options tempting for different defensible reasons, but weaker in this situation: e.g. reasonable action at the wrong time, correct action with narrower scope, useful short-term fix that misses a constraint, or a valid strategy with a greater risk.',
+ 'Ensure exactly ONE BEST answer based on the stated objective and constraints. Do not include two equally defensible choices. If several could be best, add one brief decisive constraint to the question.',
+ 'Avoid verbal giveaways: the right answer must NOT always be the longest, most detailed, most cautious or only one mentioning data, consultation, measurement or stakeholders.',
+ 'Keep choices parallel, balanced in specificity and length (ideally 5–12 words; never more than 18) and use distinct practical actions. Avoid absolute words such as always, never, only or immediately unless genuinely necessary.',
+ 'Include an explicit PRIVATE rationale explaining why the best answer wins GIVEN the scenario, and why each of the other three plausible actions loses on a particular trade-off (roughly 90–400 characters).',
+ 'For EACH SKILL: use at least two different subskills, rotate the type of trade-off tested and vary correct-answer positions.',
+ 'For advanced scenarios, prefer tough priorities among good actions rather than obscure theory, trick questions, or extra words.',
+ 'Set answerKey to the one best choice (0–3). Follow supplied skill exactly for category, competencyId, questionKind and difficulty.',
+ 'Before returning JSON, silently review all four options: if one is absurd or clearly irresponsible, replace it with a credible alternative. If the best answer jumps out by wording or length, rebalance the four choices.',
  'Return only questionBank in the required structured format.'
 ].join('\n');
 function textFromResponse(data){return (data.output||[]).filter(i=>i.type==='message').flatMap(i=>i.content||[]).filter(c=>c.type==='output_text').map(c=>c.text).join('');}
@@ -86,6 +94,38 @@ function verifyMap(map){
  }
  return {...map,competencies};
 }
+// Catch cheap 'test-taking giveaways' without attempting to grade professional
+// judgement in code. Semantic correctness remains the model's responsibility.
+const GIVEAWAY=/\b(?:do nothing|ignore (?:the|all|any|it|their|every)|wait (?:until|for) (?:something|a failure|the problem|complaints|harm)|hide (?:the|all)|skip (?:all|the) (?:checks|review|approval)|blindly (?:approve|launch)|hope (?:it|things) (?:will|work)|guess (?:without|at random))\b/i;
+export function optionQuality(q){
+ const options=q?.options;
+ if(!Array.isArray(options)||options.length!==5)return 'Expected five options';
+ const choices=options.slice(0,4);
+ if(choices.some(c=>GIVEAWAY.test(c)))return 'Replace obviously irresponsible alternatives with plausible professional decisions';
+ const lengths=choices.map(c=>c.trim().split(/\s+/).length);
+ // Only reject dramatic length giveaways; professional answers need flexibility.
+ if(Math.max(...lengths)>Math.max(11,Math.min(...lengths)*2.8))return 'Make all four choices reasonably similar in length';
+ if(choices.some(c=>/\b(?:always|never|obviously|clearly|just ignore)\b/i.test(c)))return 'Avoid verbal clues in the choices';
+ return null;
+}
+export function balanceAnswerPositions(bank,skills,rng=max=>crypto.randomInt(max)){
+ const next=bank.map(q=>({...q,options:[...q.options]}));
+ for(const skill of skills){
+  const questions=next.filter(q=>q.competencyId===skill.id);
+  // Three questions per skill; all three right answers occupy different slots.
+  const offset=rng(4);const step=rng(2)===0?1:3;
+  questions.forEach((q,i)=>{
+   const best=q.options[q.answerKey];
+   const others=q.options.slice(0,4).filter((_,j)=>j!==q.answerKey);
+   // Rotate the remaining credible options independently of the correct answer.
+   const r=rng(3),rotated=[...others.slice(r),...others.slice(0,r)];
+   const key=(offset+step*i)%4;
+   rotated.splice(key,0,best);
+   q.options=[...rotated,'Not sure'];q.answerKey=key;
+  });
+ }
+ return next;
+}
 function verifyBatch(data,skills){
  const items=data?.questionBank;
  if(!Array.isArray(items)||items.length!==skills.length*3)throw Error(`Expected ${skills.length*3} questions`);
@@ -98,8 +138,10 @@ function verifyBatch(data,skills){
    if(q.category!==s.name||q.questionKind!==kind||q.difficulty!==difficulty)throw Error(`Wrong category/kind/difficulty for ${s.id} item ${i+1}`);
    if(typeof q.text!=='string'||q.text.trim().length<20||q.text.trim().split(/\s+/).length>55)throw Error(`Invalid question wording for ${s.id}`);
    if(!Array.isArray(q.options)||q.options.length!==5||q.options[4]!=='Not sure'||q.options.some(o=>typeof o!=='string'||o.trim().length<3||o.trim().split(/\s+/).length>18)||new Set(q.options.map(o=>o.toLowerCase())).size!==5||!Number.isInteger(q.answerKey)||q.answerKey<0||q.answerKey>3)throw Error(`Invalid options/answer for ${s.id}`);
+   const quality=optionQuality(q);if(quality)throw Error(`${s.id} question ${i+1}: ${quality}`);
    if(typeof q.rationale!=='string'||q.rationale.length<25||q.rationale.length>650||typeof q.subskill!=='string'||q.subskill.length<5||q.subskill.length>110)throw Error(`Invalid grading explanation/subskill for ${s.id}`);
   }
+  if(new Set(qs.map(q=>q.subskill.toLowerCase().trim())).size<2)throw Error(`${s.id}: cover at least two distinct subskills`);
  }
  if(items.some(q=>!IDs.has(q.competencyId)))throw Error('Question does not belong to this batch');
  return items;
@@ -133,7 +175,7 @@ export async function generateAssessmentBank(profile){
   user:{targetRole:map.targetRole,skills},name:'career_question_batch',schema:BATCH_SCHEMA,tokens:7000,
   validator:raw=>verifyBatch(raw,skills)
  })));
- try{return validateAssessmentBank({...map,questionBank:chunks.flat()});}
+ try{return validateAssessmentBank({...map,questionBank:balanceAnswerPositions(chunks.flat(),map.competencies)});}
  catch(error){console.error('Final assessment validation failed',{reason:error.message});
   throw new ApiError(502,'Could not validate the assessment questions. Please try again.');}
 }
