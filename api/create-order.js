@@ -18,14 +18,29 @@ export default async function handler(req,res){
    });
    const unfinished=await findIncompleteOrder(database,email);
    let sameDevice=false;
-   // The email lookup never discloses an order ID or session token.
-   if(unfinished&&body.orderId===unfinished.id&&typeof body.checkoutNonce==='string'){
-    try{verifyCheckoutProof(unfinished.data(),body.checkoutNonce,unfinished.id);sameDevice=true;}catch{}
+   // A returning browser can prove access with its verified purchase OR its existing
+   // unexpired assessment session. An email address alone cannot grant access.
+   if(unfinished){
+    const order=unfinished.data();
+    if(body.orderId===unfinished.id&&typeof body.checkoutNonce==='string'){
+     try{verifyCheckoutProof(order,body.checkoutNonce,unfinished.id);sameDevice=true;}catch{}
+    }
+    if(!sameDevice&&order.sessionId&&body.sessionId===order.sessionId&&
+       typeof body.sessionToken==='string'&&/^[a-f0-9]{64}$/.test(body.sessionToken)){
+     const session=await database.collection('professionalAssessments_v1').doc(order.sessionId).get();
+     const s=session.data();
+     if(session.exists&&s.paid===true&&s.email===email&&s.status!=='complete'&&
+        s.accessExpiresAt?.toMillis?.()>Date.now()&&
+        sha(body.sessionToken)===s.tokenHash)sameDevice=true;
+    }
    }
    return output(res,200,{unfinished:Boolean(unfinished),sameDevice,...(sameDevice?{sessionId:unfinished.data().sessionId||null}:{})});
   }
   if(mode==='recover'){
    const email=cleanEmail(body.email);
+   if(!process.env.RESEND_API_KEY||!process.env.REPORT_FROM_EMAIL){
+    throw new ApiError(503,'Email recovery is not configured yet. Please contact support.');
+   }
    const day=new Date().toISOString().slice(0,10),ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].slice(0,80);
    const limitRef=database.collection('professionalRecoveryDaily_v1').doc(`${day}_${sha(`${email}|${ip}|${process.env.RAZORPAY_KEY_SECRET}`).slice(0,35)}`);
    await database.runTransaction(async tx=>{

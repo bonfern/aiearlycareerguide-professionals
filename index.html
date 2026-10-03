@@ -254,8 +254,9 @@ $('startBtn').addEventListener('click',()=>{show('emailGate');$('emailGateError'
 const SESSION_KEY='careerProfessionalsBetaV1';
 const PREVIOUS_KEY='careerProfessionalsBetaPreviousV1';
 const PURCHASE_KEY='careerProfessionalsPaidCheckoutV1', PENDING_KEY='careerProfessionalsPendingCheckoutV1';
+const PURCHASE_MAP_KEY='careerProfessionalsPaidPurchasesByEmailV1';
 const PENDING_MAP_KEY='careerProfessionalsPendingByEmailV2';
-let paidPurchase=null,pendingCheckouts={},privatePreview=false,checkoutBusy=false;
+let paidPurchase=null,paidPurchases={},pendingCheckouts={},privatePreview=false,checkoutBusy=false;
 const liveHistory=[];
 let liveSession=null,currentLiveQuestion=null,liveBusy=false,savedServerProfile=null,liveCompletionMode='full';
 let liveProgressState={assessed:0,total:0};
@@ -560,7 +561,26 @@ const validCheckoutEmail=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(enteredEmail());
 function pendingForEmail(email=enteredEmail()){const p=pendingCheckouts[email];return p?.email===email&&p?.orderId&&p?.checkoutNonce?p:null;}
 function savePendingCheckouts(){localStorage.setItem(PENDING_MAP_KEY,JSON.stringify(pendingCheckouts));localStorage.removeItem(PENDING_KEY);}
 function clearPendingOrder(order){if(order?.email&&pendingCheckouts[order.email]?.orderId===order.orderId){delete pendingCheckouts[order.email];savePendingCheckouts();}}
-function sameBrowserPurchase(){return Boolean(emailGateState.unfinished&&emailGateState.sameDevice&&paidPurchase?.email===enteredEmail());}
+function purchaseForEmail(email=enteredEmail()){
+ const p=paidPurchases[email]||(paidPurchase?.email===email?paidPurchase:null);
+ return p?.email===email&&p.orderId&&p.checkoutNonce?p:null;
+}
+function rememberPurchase(p){
+ if(!p?.email||!p.orderId||!p.checkoutNonce)return;
+ paidPurchase={orderId:p.orderId,checkoutNonce:p.checkoutNonce,email:p.email};
+ paidPurchases[p.email]=paidPurchase;
+ localStorage.setItem(PURCHASE_KEY,JSON.stringify(paidPurchase));
+ localStorage.setItem(PURCHASE_MAP_KEY,JSON.stringify(paidPurchases));
+}
+function savedSessionForEmail(email=enteredEmail()){
+ const list=[liveSession,...readPreviousSessions()];
+ for(const s of list){if(s?.paid===true&&s.email===email&&s.sessionId&&
+    /^[a-f0-9]{64}$/.test(s.sessionToken||'')&&
+    (!s.accessExpiresAt||Date.parse(s.accessExpiresAt)>Date.now()))return s;}
+ return null;
+}
+function sameBrowserPurchase(){return Boolean(emailGateState.unfinished&&emailGateState.sameDevice&&
+ (purchaseForEmail()||savedSessionForEmail()));}
 function setCheckoutBusy(b){
  checkoutBusy=b;syncCheckout();
 }
@@ -607,8 +627,7 @@ async function applyCoupon(){
 function recordPending(order){pendingCheckouts[order.email]=order;savePendingCheckouts();syncCheckout();}
 function showConfirmationNotice(){ /* Confirmation is emailed; keep the assessment page focused on questions. */ }
 function completePayment(order,status='pending'){
- paidPurchase={orderId:order.orderId,checkoutNonce:order.checkoutNonce,email:order.email};
- localStorage.setItem(PURCHASE_KEY,JSON.stringify(paidPurchase));
+ rememberPurchase(order);
  clearPendingOrder(order);
  privatePreview=false;setCheckoutBusy(false);showConfirmationNotice(status);show('profile');render();
 }
@@ -629,8 +648,10 @@ async function checkEmailAndRoute(){
  $('emailGateError').textContent='';$('emailGateStatus').textContent='Checking for an unfinished assessment…';
  const email=enteredEmail();
  try{
-  const proof=paidPurchase?.email===email?{orderId:paidPurchase.orderId,checkoutNonce:paidPurchase.checkoutNonce}:{};
-  const result=await checkoutRequest('create-order?mode=lookup',{email,...proof});
+  const purchase=purchaseForEmail(email),saved=savedSessionForEmail(email);
+  const proof=purchase?{orderId:purchase.orderId,checkoutNonce:purchase.checkoutNonce}:{};
+  const sessionProof=saved?{sessionId:saved.sessionId,sessionToken:saved.sessionToken}:{};
+  const result=await checkoutRequest('create-order?mode=lookup',{email,...proof,...sessionProof});
   // Ignore a result if the visitor changed their email while the request was running.
   if(email!==enteredEmail())return;
   emailGateState={email,unfinished:Boolean(result.unfinished),sameDevice:Boolean(result.sameDevice),sessionId:result.sameDevice?(result.sessionId||null):null};
@@ -650,21 +671,34 @@ async function checkEmailAndRoute(){
 }
 async function continueExisting(){
  if(recoverBusy||!emailGateState.unfinished||emailGateState.email!==enteredEmail())return;
+ recoverBusy=true;$('continueExistingBtn').disabled=true;$('resumeGateError').textContent='';
  if(sameBrowserPurchase()){
-  if(!emailGateState.sessionId){show('profile');render();return;}
-  // Only the specific unfinished session may resume with an existing browser token.
-  if(liveSession?.paid&&liveSession.email===enteredEmail()&&
-     liveSession.sessionId===emailGateState.sessionId){
-    show('welcome');await resumeLive();return;
-  }
-  // An existing assessment with a missing/old browser token requires an email link.
+  const saved=savedSessionForEmail(),purchase=purchaseForEmail();
+  try{
+   if(!emailGateState.sessionId&&purchase){
+    // Payment completed, but the professional profile was not started.
+    rememberPurchase(purchase);recoverBusy=false;$('continueExistingBtn').disabled=false;show('profile');render();return;
+   }
+   if(saved&&saved.sessionId===emailGateState.sessionId){
+    storeSession(saved);assessmentMode='live';show('welcome');await resumeLive();
+    if(!$('resumeError').textContent){recoverBusy=false;$('continueExistingBtn').disabled=false;return;}
+    // An expired or rotated browser token is not a reason to charge again.
+   }
+   if(purchase){
+    // A verified checkout proof can reissue a session token even if browser
+    // session storage was cleared. No email is needed on this same browser.
+    const restored=await apiCall('start',{paidOrder:{orderId:purchase.orderId,checkoutNonce:purchase.checkoutNonce}},true);
+    storeSession({...restored,paid:true,email:enteredEmail(),orderId:purchase.orderId});
+    rememberPurchase(purchase);assessmentMode='live';show('welcome');await resumeLive();
+    if(!$('resumeError').textContent){recoverBusy=false;$('continueExistingBtn').disabled=false;return;}
+   }
+  }catch(error){$('resumeGateError').textContent=error.message;show('resumeGate');}
  }
- recoverBusy=true;$('continueExistingBtn').disabled=true;
- $('recoveryStatus').textContent='Sending your secure continuation link…';$('resumeGateError').textContent='';
+ $('recoveryStatus').textContent='Sending a secure continuation link…';
  try{
   await checkoutRequest('create-order?mode=recover',{email:enteredEmail()});
-  $('recoveryStatus').textContent='If you have an unfinished assessment, a secure continuation link has been emailed. Please check your inbox and Spam folder.';
- }catch(e){$('resumeGateError').textContent=e.message;}
+  $('recoveryStatus').textContent='If your assessment exists, we will email your private continuation link. Check your inbox and Spam folder. If it does not arrive, contact support.';
+ }catch(e){$('resumeGateError').textContent=e.message;$('recoveryStatus').textContent='';}
  finally{recoverBusy=false;$('continueExistingBtn').disabled=false;}
 }
 async function loadRazorpayCheckout(){
@@ -742,7 +776,15 @@ $('payBtn').addEventListener('click',payAndContinue);
 $('continueExistingBtn').addEventListener('click',continueExisting);
 $('recoverPaymentBtn').addEventListener('click',recoverPayment);
 $('checkoutBack').addEventListener('click',()=>show('emailGate'));
-try{const p=JSON.parse(localStorage.getItem(PURCHASE_KEY)||'null');if(p?.orderId&&p?.checkoutNonce&&p?.email)paidPurchase=p;}catch{localStorage.removeItem(PURCHASE_KEY);}
+try{
+ const saved=JSON.parse(localStorage.getItem(PURCHASE_MAP_KEY)||'{}');
+ if(saved&&typeof saved==='object'&&!Array.isArray(saved)){
+  for(const [email,p] of Object.entries(saved))if(p?.email===email&&p.orderId&&p.checkoutNonce)paidPurchases[email]=p;
+ }
+ const p=JSON.parse(localStorage.getItem(PURCHASE_KEY)||'null');
+ if(p?.orderId&&p.checkoutNonce&&p.email){paidPurchase=p;paidPurchases[p.email]=p;}
+ localStorage.setItem(PURCHASE_MAP_KEY,JSON.stringify(paidPurchases));
+}catch{localStorage.removeItem(PURCHASE_KEY);localStorage.removeItem(PURCHASE_MAP_KEY);}
 try{const saved=JSON.parse(localStorage.getItem(PENDING_MAP_KEY)||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved)){for(const [email,p] of Object.entries(saved))if(p?.orderId&&p?.checkoutNonce&&p?.email===email)pendingCheckouts[email]=p;}const old=JSON.parse(localStorage.getItem(PENDING_KEY)||'null');if(old?.orderId&&old?.checkoutNonce&&old?.email&&!pendingCheckouts[old.email])pendingCheckouts[old.email]=old;savePendingCheckouts();}catch{localStorage.removeItem(PENDING_KEY);localStorage.removeItem(PENDING_MAP_KEY);}
 // Older checkouts remain recoverable only when the matching email is entered.
 
@@ -756,8 +798,7 @@ async function redeemEmailLinkIfPresent(){
  $('resumeError').textContent='';
  try{
   const result=await apiCall('start',{accessLink:token},true);
-  paidPurchase={orderId:result.orderId,checkoutNonce:result.checkoutNonce,email:result.email};
-  localStorage.setItem(PURCHASE_KEY,JSON.stringify(paidPurchase));
+  rememberPurchase({orderId:result.orderId,checkoutNonce:result.checkoutNonce,email:result.email});
   clearPendingOrder({orderId:result.orderId,email:result.email});privatePreview=false;
   if(result.sessionId&&result.sessionToken){
    storeSession({sessionId:result.sessionId,sessionToken:result.sessionToken,paid:true,

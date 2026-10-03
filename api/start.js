@@ -32,8 +32,13 @@ export default async function handler(req,res){
    });
    return output(res,200,{...granted,checkoutNonce:recoveredCheckoutProof(granted.orderId)});
   }
-  let profile;
-  try{profile=validatePayload({profile:raw.profile,history:[]}).profile;}catch(e){throw new ApiError(400,e.message);}
+  // A paid order with an existing assessment needs only the checkout proof to
+  // resume. A NEW assessment must still provide a fully validated profile.
+  let profile=null;
+  if(raw.profile!==undefined){
+   try{profile=validatePayload({profile:raw.profile,history:[]}).profile;}
+   catch(e){throw new ApiError(400,e.message);}
+  }
   if(raw.paidOrder){
    const {orderId,checkoutNonce}=raw.paidOrder;
    if(typeof orderId!=='string'||!/^(order_[A-Za-z0-9]+|free_[a-f0-9]{32})$/.test(orderId))throw new ApiError(400,'Invalid checkout reference.');
@@ -50,6 +55,7 @@ export default async function handler(req,res){
      tx.update(ref,{tokenHash:sha(token),updatedAt:new Date()});
      return {id:order.sessionId,accessExpiresAt:existing.data().accessExpiresAt.toDate().toISOString(),status:existing.data().status,reused:true};
     }
+    if(!profile)throw new ApiError(400,'Complete your profile before starting the assessment.');
     const session=newSession(30),ref=database.collection('professionalAssessments_v1').doc(session.id);
     tx.create(ref,{tokenHash:sha(token),email:order.email,paid:true,orderId,
      profile,history:[],currentQuestion:null,status:'active',callsUsed:0,generationLease:null,
@@ -60,6 +66,7 @@ export default async function handler(req,res){
    return output(res,201,{sessionId:granted.id,sessionToken:token,paid:true,
     accessExpiresAt:granted.accessExpiresAt,status:granted.status||'active',reused:granted.reused});
   }
+  if(!profile)throw new ApiError(400,'Complete your profile before starting the assessment.');
   if(!process.env.PREVIEW_ACCESS_CODE||!previewAuthorized(raw.previewCode))throw new ApiError(401,'Incorrect private preview access code.');
   const ip=String(req.headers['x-vercel-forwarded-for']||req.headers['x-forwarded-for']||'unknown').split(',')[0].slice(0,80);
   const day=new Date().toISOString().slice(0,10),session=newSession();
