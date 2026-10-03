@@ -85,3 +85,7 @@ export async function generateQuestion(profile,history,blueprint=null,target=nul
  console.error('AI question failed after internal retries',{firstQuestion,targetSkill:target?.id||null});
  throw new ApiError(502,'We could not prepare a valid question. Your previous answers are saved. Please retry.');
 }
+
+// V7 builds the compact skill map and full private question bank once. All later
+// questions are selected from Firestore, so no OpenAI call is needed per answer.
+export {generateAssessmentBank} from './bank-generator.js';

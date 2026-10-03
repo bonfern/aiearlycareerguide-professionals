@@ -1,57 +1,49 @@
-# Career Professionals V4 — Role-specific competency assessment
+# AI Early Career Guide — Career Professionals V7 (Focused Skills)
 
-This update replaces the previous 7–9 question interview. It works with your **existing Career Professionals GitHub/Vercel app and separate Professional Firebase project**. It does NOT modify the student application.
+Private beta. This update does **not** implement ₹499 checkout, coupons, report emails, or customer authentication. Keep preview access restricted.
 
-## What the live beta now does
+## Changes
 
-1. The static profile continues to branch by employment status, with properly capitalised labels. It now asks for an optional **specific target job title** as well as the career objective, target function and target industry. A specific title improves accuracy; if it is missing, the AI uses a **provisional** target-role interpretation of those fields, not a verified job specification.
-2. At the start of the live interview, your configured high-reasoning OpenAI model builds a **role-specific map of 8–16 competencies**, including at least four technical and three behavioural skill areas. Senior roles can therefore have more assessed domains than entry-level roles.
-3. It asks at least one conceptual question and one applied scenario per technical skill, and at least two applied scenarios per behavioural skill. **The difficulty increases after a correct answer; mixed answers trigger a third discriminating scenario.** Every question has four plausible options plus **Not sure**. Wrong, uncertain and correct answers are recorded privately; no answer key is sent to the browser during the interview. Questions are chosen by evidence coverage, not a fixed total. There is a 100-question safety ceiling; typical assessments should be far shorter, depending on the number of competencies and mixed answers.
-4. The header now reads **Role-specific skills assessment**; the progress indicator shows **skill areas assessed**, not an invented total number of questions.
-5. The report now includes EVERY competency with the target benchmark, observed multiple-choice evidence, an explicitly qualified gap or next-level opportunity, 2–3 concrete learning actions, a practice assignment and a measurable indicator. It preserves the career overview, strengths, achievements (only if supplied), career directions and 30/60/90-day plan.
-6. This is an **unproctored, AI-generated scenario assessment**, not a validated hiring, psychometric or credential-verification test. MCQs can indicate knowledge/judgment gaps but cannot verify real workplace performance.
+- The current first question still selects a profile path (employed, self-employed, between jobs, returner, graduate, final-year student).
+- The AI selects only **4–7 indispensable technical and behavioural competencies** for the target role; each has a clear expectation. Another 2–6 relevant role requirements are deliberately **not tested** and are listed separately in the report.
+- One initial API request generates the skill map **and a complete private bank of three short, multiple-choice questions per tested skill**. This step can take longer. Once prepared, the browser requests the next question directly from the saved Firestore bank, without a further OpenAI call after each answer.
+- Each tested skill has two questions (knowledge + scenario for technical skills; two distinct scenarios for behavioural skills). A third prepared scenario is used only if the answers disagree. Typical full assessment: **8–21 questions**, depending on the role and evidence. There is no fixed question count.
+- The report now leads with required skills, current test-based competency, specific development gaps, concrete learning activities, a practice assignment and observable success criteria. Required but untested skills appear in their own section with the expected role standard and a verification exercise. A tailored 30/60/90-day plan closes the report. It does not narrate the user's selected answers.
+- Early finish is optional and explicitly produces a **preliminary** report. The full report only marks an indispensable skill assessed after completing its required two or three questions. Unanswered skills are labelled **Not assessed**. Multiple-choice results indicate knowledge/judgment, not verified on-the-job competence.
 
-## GitHub update — exactly 12 complete files
+## GitHub upload — exactly 12 files
 
-**Use the V4 update-only ZIP** (not the full-backup ZIP). Upload its contents to your EXISTING `aiearlycareerguide-professionals` repository. These 12 files are complete replacements, not partial code snippets:
+Replace files at **their existing paths** (not the root unless indicated) and add the two new library files. Upload in two groups of six if GitHub imposes a 12-file upload limit.
 
-- `index.html`
-- `api/_lib/interview-logic.js`
-- `api/_lib/ai.js`
-- `api/_lib/store.js`
-- `api/_lib/report.js`
-- `api/next-question.js`
-- `api/submit-answer.js`
-- `api/back.js`
-- `api/generate-report.js`
-- `tests/logic.test.js`
-- `tests/report.test.js`
-- `README.md`
+- `index.html` — replace
+- `api/_lib/ai.js` — replace (legacy sessions remain compatible)
+- `api/_lib/assessment-bank.js` — NEW
+- `api/_lib/bank-generator.js` — NEW
+- `api/_lib/interview-logic.js` — replace
+- `api/_lib/report.js` — replace
+- `api/next-question.js` — replace
+- `api/generate-report.js` — replace
+- `tests/logic.test.js` — replace
+- `tests/report.test.js` — replace
+- `tests/speed-ui.test.js` — replace
+- `README.md` — replace
 
-Because your GitHub upload interface has previously refused more than 12 files, upload them in **two batches of six** if needed. Maintain `api/_lib/`, `api/` and `tests/` folders. Do not delete unchanged files or upload `.env`/Firebase credentials. Commit and wait for Vercel to redeploy.
+Do not delete unrelated files or upload your Firebase credentials. Existing V6 assessment sessions can resume in their original question-generation mode; start a fresh assessment to test V7. Existing completed reports remain cached and available during the seven-day preview-access period.
 
-## Vercel environment
+## Model configuration
 
-No new variables. Keep `FIREBASE_SERVICE_ACCOUNT_JSON`, `OPENAI_API_KEY` and `PREVIEW_ACCESS_CODE` unchanged. This V4 code respects your existing `OPENAI_MODEL` and `OPENAI_REASONING_EFFORT` (default `high`), plus optional `REPORT_OPENAI_MODEL` / `REPORT_REASONING_EFFORT`. Only set models your own API project can use; do not put keys in GitHub. High-reasoning calls for 20–40+ questions have a **material API cost**, so set budgets/alerts and test with one or two internal accounts before sharing widely.
+No new environment variables required. V7 defaults independently of your old `OPENAI_MODEL` setting:
 
-**Start a NEW live assessment** after deployment. Previously saved V3 sessions lack V4 competency maps and are not compatible with the new skill-level reporting. V3 reports already generated remain stored and unchanged. The old offline preset demo is hidden in this version; test the NEW skill assessment on the deployed Vercel website.
+- **Assessment setup:** `gpt-5.6-terra` with **low** reasoning, called **once per new V7 assessment**.
+- **Subsequent questions:** no OpenAI call; selected from the saved question bank.
+- **Final report:** `gpt-5.6-terra` with **medium** reasoning, called once after completion.
 
-## Verification
+Optional Vercel overrides: `ASSESSMENT_MODEL`, `ASSESSMENT_REASONING_EFFORT`, `REPORT_OPENAI_MODEL`, `REPORT_REASONING_EFFORT`. OpenAI API project access may vary; if the default model isn't enabled, verify access before changing model settings. Keep your existing `OPENAI_API_KEY`, Firebase JSON credentials and preview code unchanged.
 
-Use `npm test` (Node.js 20+) to run mocked logic/API tests. You must still test a full live AI assessment, an interrupted/resumed assessment, Back, and report generation with your own OpenAI API and Firebase credentials before offering the service publicly. Different models may require more output time on the first competency-map question; check Vercel function logs if a request times out.
+## Test locally
 
-## Not included in this release
+Node.js 20+. `npm install`, then `npm test`. Automated tests mock OpenAI; **live response time, API availability and Firebase must be checked on your Vercel deployment**. The first assessment may take longer to prepare because the full bank is generated up front. Subsequent questions should normally appear quickly, subject to network and Firestore latency.
 
-The planned **₹499 Razorpay checkout, optional discount coupons, password-free email entry and final report email via Resend** remain planned work. This is still a private beta requiring the preview access code. No new payment or email code is added in this update.
+## Privacy and deployment
 
-
-## V5 early-finish improvement
-
-After at least 8 graded answers across 3 different mapped skills, an existing tester can use **Finish Assessment & Get Preliminary Report**. This ends the active session, preserves all saved answers, and enables the normal report endpoint. The report labels unassessed skills as Not assessed and other incomplete skills as limited evidence. The full assessment still follows 2–3 questions per skill. The question regeneration retry fix is included in this package. The backend limits accidental repeat requests; finishing does not create a new paid assessment.
-
-
-## V6 — Clearer, shorter AI questions (combined with the pending V5 fixes)
-
-This is a **single combined update**. It retains the question-regeneration fix and the optional early finish after at least eight answers across three skill areas. Do **not** upload an older V5 patch after this one.
-
-New questions use everyday English and one decision per question. The model aims for 25–40 words per question and 5–12 words per option. Advanced questions remain challenging because of the choices, not because of long reading passages. The server rejects unusually long questions/options and automatically requests a shorter replacement when possible. The wording update applies only to **newly generated questions**; if a long question is already saved in an existing session, finish or answer that question and the next newly generated question will use the updated rules. No environment-variable changes are needed.
+The full question bank and grading rationales remain server-side in Firestore; only the current question and its options are sent to the browser. Use private beta testers until customer authentication, payment verification, rate limits and Firestore retention policies are fully configured. Each test session is bound to a random session token and the preview link expires in seven days.

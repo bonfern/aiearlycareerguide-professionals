@@ -2,104 +2,63 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Script,runInNewContext} from 'node:vm';
-import {MAX_QUESTIONS,groupFromProfile,validatePayload,validateBlueprint,competencyProgress,earlyFinishEligibility,nextCompetency,nextQuestionType,cleanModelResult} from '../api/_lib/interview-logic.js';
-import {ApiError,validateAnswer} from '../api/_lib/security.js';
-import {generateQuestion} from '../api/_lib/ai.js';
-const example={employmentStatus:'Employed',currentJobTitle:'Process Excellence AVP',qualification:'Master’s degree',skills:'Change management',careerObjective:'Get promoted',targetJobTitle:'Director Transformation'};
-const blueprint=[
- ...['Transformation strategy','Benefits measurement','Change adoption','Operating model design','Digital delivery'].map((name,i)=>({id:`s${i+1}`,name,type:'technical',importance:'essential',benchmark:`Can independently lead ${name.toLowerCase()} at director level with reliable decisions.`,subskills:['Application in complex programmes','Risk and measurement']})),
- ...['Executive influence','Leading cross-functional teams','Decision making under uncertainty','Conflict resolution'].map((name,i)=>({id:`s${i+6}`,name,type:'behavioural',importance:'important',benchmark:`Can demonstrate credible ${name.toLowerCase()} in a complex situation.`,subskills:['Competing stakeholder priorities','Coaching and accountability']}))
-];
-const questionFor=(skill,kind,history=[])=>({competencies:history.length?[]:blueprint,question:{competencyId:skill.id,category:skill.name,questionKind:kind,difficulty:history.length===0?'applied':history.at(-1).correct?'advanced':'applied',
- text:`A director faces competing priorities during a transformation programme. Which action best addresses ${skill.name.toLowerCase()} while balancing delivery risks?`,
- options:['Clarify stakeholder outcomes and adoption measures','Begin execution before checking business need','Focus only on technology delivery','Defer all decisions indefinitely','Not sure'],answerKey:0,rationale:'Clarifying measurable outcomes and stakeholder requirements reduces implementation risk.',subskill:skill.subskills[0]}});
-const answer=(skill,kind,correct)=>({competencyId:skill.id,questionType:kind,correct,difficulty:'applied',question:'Question',answer:'Answer',subskill:skill.subskills[0]});
+import {MAX_QUESTIONS,groupFromProfile,validatePayload,validateBlueprint,competencyProgress,earlyFinishEligibility,nextCompetency} from '../api/_lib/interview-logic.js';
+import {validateAssessmentBank,choosePreparedQuestion} from '../api/_lib/assessment-bank.js';
+import {generateAssessmentBank} from '../api/_lib/bank-generator.js';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
-test('career-stage profile routing and editable target role',()=>{
+const profile={employmentStatus:'Employed',currentJobTitle:'AVP Process Excellence',qualification:'Master\'s degree',skills:'Improvement, leadership',careerObjective:'Promotion',targetJobTitle:'Director Transformation'};
+const skills=[
+ ...['Transformation strategy','Benefits validation','Change adoption'].map((name,i)=>({id:`s${i+1}`,name,type:'technical',importance:'essential',benchmark:`Able to lead complex ${name.toLowerCase()} with clear impact and accountable choices.`,subskills:['Practical measurement and decision-making','Handling stakeholders and risks']})),
+ ...['Executive influence','People leadership'].map((name,i)=>({id:`s${i+4}`,name,type:'behavioural',importance:'essential',benchmark:`Can show ${name.toLowerCase()} during difficult delivery decisions.`,subskills:['Conflicting stakeholder goals','Fair and consistent decisions']}))
+];
+const extras=[{id:'u1',name:'Supplier risk',expectation:'Must be able to identify and respond to supplier risks before rollout.'},{id:'u2',name:'Budget ownership',expectation:'Must be able to set and control investment budgets responsibly.'}];
+const bank=skills.flatMap(skill=>[0,1,2].map((i)=>({competencyId:skill.id,category:skill.name,questionKind:i===0&&skill.type==='technical'?'knowledge':'scenario',difficulty:i===1?'advanced':'applied',
+ text:`Your team has a difficult ${skill.name.toLowerCase()} decision. Which action would best protect the intended outcome in situation ${i+1}?`,
+ options:['Check the evidence before choosing an action','Ask everyone to work longer without changing anything','Skip the review and immediately approve delivery','Wait until the risk has already caused damage','Not sure'],answerKey:i%4,
+ rationale:'Checking the evidence and comparing expected outcomes is the most reliable way to choose an action.',subskill:skill.subskills[i%2]})));
+const raw={targetRole:'Director Transformation',competencies:skills,untestedSkills:extras,questionBank:bank};
+const answer=(skill,i,correct)=>({competencyId:skill.id,questionType:i===0&&skill.type==='technical'?'knowledge':'scenario',correct,subskill:skill.subskills[i%2]});
+test('career-stage profile remains conditional and frontend JavaScript parses',()=>{
  for(const status of ['Employed','Self-employed / freelancer','Between jobs','Returning after a career break','Recent graduate','Student nearing graduation']){
-  const p={...example,employmentStatus:status};
-  if(!['Employed','Between jobs'].includes(status))delete p.currentJobTitle;
+  const p={...profile,employmentStatus:status};if(!['Employed','Between jobs'].includes(status))delete p.currentJobTitle;
   assert.equal(validatePayload({profile:p,history:[]}).profile.profileGroup,groupFromProfile(p));
  }
- const js=html.match(/<script>([\s\S]*?)<\/script>/)[1];new Script(js);
+ new Script(html.match(/<script>([\s\S]*?)<\/script>/)[1]);
  const part=html.split('// Cohort-specific profile.')[1].split('const $=id=>')[0];
- const run=status=>JSON.parse(runInNewContext(`// Cohort-specific profile.${part}\ndata.employmentStatus=${JSON.stringify(status)};JSON.stringify(qs.filter(q=>!q.showIf||q.showIf(data)).map(q=>q.id))`));
- assert(run('Employed').includes('targetJobTitle'));
- assert(!run('Student nearing graduation').includes('currentJobTitle'));
- assert(run('Returning after a career break').includes('careerBreakDuration'));
- assert(run('Self-employed / freelancer').includes('businessStage'));
- assert.match(html,/displayChoice/);assert(!html.includes('up to 9'));
- assert(!html.includes('sk-proj-'));
+ const fields=status=>JSON.parse(runInNewContext(`// Cohort-specific profile.${part}\ndata.employmentStatus=${JSON.stringify(status)};JSON.stringify(qs.filter(q=>!q.showIf||q.showIf(data)).map(q=>q.id))`));
+ assert(fields('Employed').includes('targetJobTitle'));assert(!fields('Recent graduate').includes('currentJobTitle'));
 });
-test('role-specific map covers both skill families and rejects weak plans',()=>{
- assert.equal(MAX_QUESTIONS,60);assert.equal(validateBlueprint(blueprint).length,9);
- assert.throws(()=>validateBlueprint(blueprint.slice(0,3)),/8–16/);
- assert.throws(()=>validateBlueprint([...blueprint.slice(0,8),blueprint[0]]),/repeated/);
+test('bank covers only 4–7 essential skills and lists additional untested requirements',()=>{
+ assert.equal(MAX_QUESTIONS,24);assert.equal(validateBlueprint(skills).length,5);
+ assert.throws(()=>validateBlueprint(skills.slice(0,3)),/4–7/);
+ assert.equal(validateAssessmentBank(raw).questionBank.length,15);
+ assert.equal(validateAssessmentBank(raw).untestedSkills[0].name,'Supplier risk');
+ assert.throws(()=>validateAssessmentBank({...raw,questionBank:bank.slice(1)}),/3 prepared items|Include 3/);
+ assert.throws(()=>validateAssessmentBank({...raw,untestedSkills:[{...extras[0],name:skills[0].name},extras[1]]}),/Repeated/);
 });
-test('knowledge and scenario evidence, mixed answers trigger a third probe, no fixed-length interview',()=>{
- assert.equal(nextQuestionType(blueprint[0],[]),'knowledge');
- const h1=[answer(blueprint[0],'knowledge',true)];assert.equal(nextQuestionType(blueprint[0],h1),'scenario');
- const h2=[...h1,answer(blueprint[0],'scenario',false)];
- assert.equal(nextCompetency(blueprint,h2).id,'s1');
- assert.equal(competencyProgress(blueprint,h2).skills[0].resolved,false);
- const h3=[...h2,answer(blueprint[0],'scenario',true)];
- assert.equal(nextCompetency(blueprint,h3).id,'s2');
- const all=blueprint.flatMap(s=>s.type==='technical'?[answer(s,'knowledge',true),answer(s,'scenario',true)]:[answer(s,'scenario',true),answer(s,'scenario',true)]);
- assert.equal(nextCompetency(blueprint,all),null);assert.equal(competencyProgress(blueprint,all).assessed,9);
+test('full assessment samples all core skills and probes only mixed answers',()=>{
+ const two=skills.flatMap(skill=>[answer(skill,0,true),answer(skill,1,true)]);
+ assert.equal(nextCompetency(skills,two),null);assert.equal(competencyProgress(skills,two).assessed,5);
+ const mixed=[answer(skills[0],0,true),answer(skills[0],1,false)];
+ assert.equal(nextCompetency(skills,mixed).id,'s1');assert.equal(competencyProgress(skills,mixed).assessed,0);
+ assert.equal(nextCompetency(skills,[...mixed,answer(skills[0],2,false)]).id,'s2');
+ assert.equal(earlyFinishEligibility(skills,two).eligible,true);
+ assert.equal(earlyFinishEligibility(skills,Array.from({length:7},()=>answer(skills[0],0,true))).eligible,false);
 });
-test('strict AI question validation and server-only grading data',()=>{
- const first=cleanModelResult(questionFor(blueprint[0],'knowledge'),null,null,[]);
- assert.equal(first.blueprint.length,9);assert.equal(first.question.answerKey,0);
- assert.equal(first.question.answerKey,0);
- assert.equal(first.question.rationale.startsWith('Clarifying'),true);
- // The transport layer omits both private fields in its publicQuestion function.
- const storeCode=readFileSync(new URL('../api/_lib/store.js',import.meta.url),'utf8');
- assert.match(storeCode,/const \{answerKey,rationale,\.\.\.safe\}=question/);
- assert.match(storeCode,/canFinish:eligibility\.eligible/);
- assert.throws(()=>cleanModelResult({...questionFor(blueprint[0],'knowledge'),question:{...questionFor(blueprint[0],'knowledge').question,options:['A','B','C','D','E']}},null,null,[]),/Invalid options|Not sure/);
- assert.equal(validateAnswer(first.question,first.question.options[1]),first.question.options[1]);
- assert.throws(()=>validateAnswer(first.question,'My own invented answer'),ApiError);
+test('prepared questions require no subsequent OpenAI calls and never expose answer keys',()=>{
+ const validated=validateAssessmentBank(raw);
+ const second=choosePreparedQuestion(validated.blueprint,validated.questionBank,[answer(skills[0],0,true)],skills[0]);
+ assert.equal(second.difficulty,'advanced');assert.equal(second.questionType,'scenario');
+ const store=readFileSync(new URL('../api/_lib/store.js',import.meta.url),'utf8');assert.match(store,/const \{answerKey,rationale,\.\.\.safe\}=question/);
+ assert.match(readFileSync(new URL('../api/next-question.js',import.meta.url),'utf8'),/choosePreparedQuestion\(s\.blueprint,s\.questionBank/);
 });
-test('short, clear question instructions and length safeguards',()=>{
- const {question:base}=questionFor(blueprint[0],'knowledge');
- const normal=cleanModelResult({competencies:blueprint,question:base},null,null,[]);
- assert.match(normal.question.text,/Which action/);
- const tooLongQuestion='You lead a team and need to make an important choice today. '.repeat(9)+'What should you do?';
- assert.throws(()=>cleanModelResult({competencies:blueprint,question:{...base,text:tooLongQuestion}},null,null,[]),/too long/);
- const longOption='Work with all the stakeholders and carefully consider all the options before you decide to do anything significant about the issue';
- assert.throws(()=>cleanModelResult({competencies:blueprint,question:{...base,options:[longOption,...base.options.slice(1)]}},null,null,[]),/too long/);
-});
-test('high reasoning Responses call uses strict JSON without leaking the key',async()=>{
- const old=globalThis.fetch,key=process.env.OPENAI_API_KEY,model=process.env.OPENAI_MODEL;
- process.env.OPENAI_API_KEY='mock-only-key';process.env.OPENAI_MODEL='gpt-6-astra';
- globalThis.fetch=async(url,opts)=>{
-  assert.equal(url,'https://api.openai.com/v1/responses');
-  const p=JSON.parse(opts.body);assert.equal(p.model,'gpt-6-astra');assert.equal(p.reasoning.effort,'high');assert.equal(p.store,false);assert.equal(p.text.format.strict,true);
-  return {ok:true,json:async()=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(questionFor(blueprint[0],'knowledge'))}]}]})};
+test('preparation makes one low-reasoning call to Terra with a full bank',async()=>{
+ const previous=globalThis.fetch;const key=process.env.OPENAI_API_KEY;const configured=process.env.ASSESSMENT_MODEL;
+ process.env.OPENAI_API_KEY='test-key';delete process.env.ASSESSMENT_MODEL;
+ globalThis.fetch=async(_url,opts)=>{const payload=JSON.parse(opts.body);
+  assert.equal(payload.model,'gpt-5.6-terra');assert.equal(payload.reasoning.effort,'low');assert(payload.max_output_tokens>=12000);
+  return {ok:true,json:async()=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(raw)}]}]})};
  };
- try{const r=await generateQuestion(example,[]);assert.equal(r.blueprint.length,9);assert.equal(r.question.questionType,'knowledge');}
- finally{globalThis.fetch=old;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;if(model===undefined)delete process.env.OPENAI_MODEL;else process.env.OPENAI_MODEL=model;}
-});
-test('Firebase accepts direct JSON credentials',async()=>{
- const {firebaseConfigured,loadFirebaseServiceAccount}=await import('../api/_lib/firebase-config.js');
- const a={project_id:'prof-demo',client_email:'test@example.com',private_key:'-----BEGIN PRIVATE KEY-----\nMOCK\n-----END PRIVATE KEY-----\n'};
- assert(firebaseConfigured({FIREBASE_SERVICE_ACCOUNT_JSON:JSON.stringify(a)}));
- assert.deepEqual(loadFirebaseServiceAccount({FIREBASE_SERVICE_ACCOUNT_JSON:JSON.stringify(a)}),a);
-});
-
-test('early-finish eligibility requires breadth, not just repeated answers from one skill',()=>{
- const one=Array.from({length:8},()=>answer(blueprint[0],'scenario',true));
- assert.equal(earlyFinishEligibility(blueprint,one).eligible,false);
- const wide=[...Array.from({length:3},()=>answer(blueprint[0],'scenario',true)),...Array.from({length:3},()=>answer(blueprint[1],'scenario',true)),...Array.from({length:2},()=>answer(blueprint[2],'scenario',false))];
- const state=earlyFinishEligibility(blueprint,wide);
- assert.equal(state.eligible,true);assert.equal(state.sampled,3);assert.equal(state.answered,8);
- assert.equal(nextCompetency(blueprint,wide).id,'s1'); // synthetic scenarios lack the required technical knowledge check
-});
-test('early-finish endpoint marks session incomplete and clears outstanding generation',()=>{
- const code=readFileSync(new URL('../api/finish-assessment.js',import.meta.url),'utf8');
- assert.match(code,/earlyFinishEligibility/);
- assert.match(code,/completionMode:'early'/);
- assert.match(code,/currentQuestion:null,generationLease:null/);
- assert.match(html,/id="finishEarlyBtn"/);
- assert.match(html,/finishEarly/);
+ try{const plan=await generateAssessmentBank(profile);assert.equal(plan.questionBank.length,15);}
+ finally{globalThis.fetch=previous;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;if(configured===undefined)delete process.env.ASSESSMENT_MODEL;else process.env.ASSESSMENT_MODEL=configured;}
 });

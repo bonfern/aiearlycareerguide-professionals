@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
 import {db,authorize,ApiError,output,handleError,postOnly,MAX_AI_CALLS,safeState,publicQuestion,publicProgress} from './_lib/store.js';
 import {MAX_QUESTIONS,nextCompetency} from './_lib/interview-logic.js';
-import {generateQuestion} from './_lib/ai.js';
+import {generateQuestion,generateAssessmentBank} from './_lib/ai.js';
+import {choosePreparedQuestion} from './_lib/assessment-bank.js';
 export default async function handler(req,res){
  if(!postOnly(req,res))return;
  let ref,leaseId;
@@ -20,6 +21,16 @@ export default async function handler(req,res){
     return {kind:'done',answered:s.history.length,progress,completionMode};
    }
    if((s.callsUsed||0)>=MAX_AI_CALLS)throw new ApiError(429,'AI request limit reached. Contact the assessment administrator.');
+   // Once the question bank exists, deliver the next question from Firestore
+   // without a network round-trip to OpenAI.
+   if(s.questionBank?.length){
+    const prepared=choosePreparedQuestion(s.blueprint,s.questionBank,s.history,target);
+    if(!prepared)throw new ApiError(409,'A prepared question is missing. Please contact the administrator.');
+    const question={...prepared,id:crypto.randomUUID()};
+    tx.update(ref,{currentQuestion:question,updatedAt:new Date()});
+    return {kind:'prepared',question:publicQuestion(question),answered:s.history.length,
+      progress:publicProgress(s)};
+   }
    const now=Date.now(),lease=s.generationLease;
    if(lease&&lease.until>now)throw new ApiError(409,'A question is being generated. Retry shortly.');
    leaseId=crypto.randomUUID();
@@ -28,12 +39,20 @@ export default async function handler(req,res){
   });
   if(result.kind==='existing')return output(res,200,{done:false,...result.state});
   if(result.kind==='done')return output(res,200,{done:true,status:'complete',answered:result.answered,progress:result.progress,completionMode:result.completionMode});
-  const generated=await generateQuestion(result.profile,result.history,result.blueprint,result.target);
+  if(result.kind==='prepared')return output(res,200,{done:false,...result});
+  // Brand-new V7 sessions: create and validate the *entire* short assessment
+  // in one call. Existing V6 sessions can still use their original flow.
+  const fresh=!result.blueprint;
+  const generated=fresh?await generateAssessmentBank(result.profile):await generateQuestion(result.profile,result.history,result.blueprint,result.target);
   const saved=await db().runTransaction(async tx=>{
    const snap=await tx.get(ref),s=snap.data();
    if(!s||s.generationLease?.id!==leaseId)throw new ApiError(409,'Generation was superseded. Refresh your interview.');
-   const question={...generated.question,id:crypto.randomUUID()};
-   tx.update(ref,{blueprint:generated.blueprint,currentQuestion:question,generationLease:null,updatedAt:new Date()});
+   const initial=fresh?choosePreparedQuestion(generated.blueprint,generated.questionBank,[],generated.blueprint[0]):generated.question;
+   if(!initial)throw new ApiError(502,'The initial question is missing. Please retry.');
+   const question={...initial,id:crypto.randomUUID()};
+   tx.update(ref,{blueprint:generated.blueprint,currentQuestion:question,
+    ...(fresh?{questionBank:generated.questionBank,untestedSkills:generated.untestedSkills,targetRole:generated.targetRole,assessmentVersion:7}:{}),
+    generationLease:null,updatedAt:new Date()});
    return {done:false,question:publicQuestion(question),answered:s.history.length,
     progress:publicProgress({...s,blueprint:generated.blueprint})};
   });

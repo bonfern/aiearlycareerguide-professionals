@@ -1,6 +1,6 @@
 // V4: Role-specific, evidence-led competency assessment.
 // Profile and interview responses are untrusted data, never instructions.
-export const MAX_QUESTIONS=60; // Emergency ceiling; normal 8–16-skill assessments need no more than 48 graded answers.
+export const MAX_QUESTIONS=24; // 4–7 essential skills, 2–3 questions each; safety ceiling.
 export const MIN_QUESTIONS=0;  // Completion depends on evidence coverage, not a fixed minimum.
 const PROFILE_KEYS=[
  'profileGroup','employmentStatus','currentJobTitle','currentIndustry','currentFunction','businessStage','businessFocus',
@@ -37,7 +37,7 @@ export function validatePayload(body){
  return {profile:safeProfile,history};
 }
 export function validateBlueprint(blueprint){
- if(!Array.isArray(blueprint)||blueprint.length<8||blueprint.length>16)throw Error('Provide 8–16 competencies relevant to the target role.');
+ if(!Array.isArray(blueprint)||blueprint.length<4||blueprint.length>7)throw Error('Provide 4–7 indispensable competencies for the target role.');
  const seen=new Set(),names=new Set();let technical=0,behavioural=0;
  const result=blueprint.map((c,i)=>{
   if(!c||typeof c!=='object')throw Error('Invalid competency.');
@@ -46,12 +46,12 @@ export function validateBlueprint(blueprint){
   if(typeof name!=='string'||name.trim().length<4||name.length>90||names.has(name.trim().toLowerCase()))throw Error('Invalid competency name.');names.add(name.trim().toLowerCase());
   if(!['technical','behavioural'].includes(type))throw Error('Invalid competency type.');
   if(type==='technical')technical++;else behavioural++;
-  if(!['essential','important'].includes(importance))throw Error('Invalid competency priority.');
+  if(importance!=='essential')throw Error('Only indispensable skills belong in the tested map.');
   if(typeof benchmark!=='string'||benchmark.length<18||benchmark.length>320)throw Error('Invalid role benchmark.');
   if(!Array.isArray(subskills)||subskills.length<2||subskills.length>5||subskills.some(s=>typeof s!=='string'||s.length<5||s.length>100))throw Error('Invalid subskills.');
   return {id,name:name.trim(),type,importance,benchmark:benchmark.trim(),subskills:subskills.map(s=>s.trim())};
  });
- if(technical<4||behavioural<3)throw Error('Assess both technical and behavioural skills.');
+ if(technical<2||behavioural<1)throw Error('Assess both technical and behavioural skills.');
  return result;
 }
 export function competencyProgress(blueprint=[],history=[]){
@@ -73,7 +73,7 @@ export function earlyFinishEligibility(blueprint=[],history=[]){
  const progress=competencyProgress(blueprint,history);
  const sampled=progress.skills.filter(s=>s.answered>0).length;
  const answered=history.filter(h=>typeof h.correct==='boolean').length;
- return {eligible:blueprint.length>=8&&answered>=8&&sampled>=3,answered,sampled,total:progress.total,fullyAssessed:progress.assessed};
+ return {eligible:blueprint.length>=4&&answered>=6&&sampled>=3,answered,sampled,total:progress.total,fullyAssessed:progress.assessed};
 }
 export function nextCompetency(blueprint,history){
  const progress=competencyProgress(blueprint,history);
@@ -116,7 +116,7 @@ export function instruction(profile,history,blueprint,target){
  ];
  if(!blueprint){
   return [...base,
-   'FIRST CALL: derive 8–16 genuinely role-specific competencies: at least 4 technical and 3 behavioural; select enough to cover the real target role without artificial padding. A senior transformation role will usually have more domains than an entry-level role.',
+   'FIRST CALL: derive 4–7 indispensable role-specific competencies: at least 2 technical and 1 behavioural; select enough to cover the real target role without artificial padding. A senior transformation role will usually have more domains than an entry-level role.',
    'Each competency needs 2–5 measurable subskills, clear target-role benchmark and priority. IDs s1,s2,...; list higher-priority skills first.',
    'For a vague career goal, map the best-supported target direction from profile, and make the remaining uncertainties explicit within your competency titles/benchmarks.',
    'Return all competencies AND one initial APPLIED knowledge question for the first technical competency if first is technical; otherwise an APPLIED scenario for the first behavioural competency.',

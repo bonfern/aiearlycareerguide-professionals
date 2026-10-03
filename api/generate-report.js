@@ -17,10 +17,10 @@ export default async function handler(req,res){
       if(s.reportLease?.until>Date.now())throw new ApiError(409,'Your report is already being generated. Please wait and try again.');
       leaseId=crypto.randomUUID();
       tx.update(ref,{reportLease:{id:leaseId,until:Date.now()+175000},reportCallsUsed:(s.reportCallsUsed||0)+1,updatedAt:new Date()});
-      return {kind:'generate',profile:s.profile,history:s.history,blueprint:s.blueprint};
+      return {kind:'generate',profile:s.profile,history:s.history,blueprint:s.blueprint,untestedSkills:s.untestedSkills||[],targetRole:s.targetRole||s.profile.targetJobTitle||s.profile.careerObjective};
     });
     if(state.kind==='cached')return output(res,200,{report:state.report,generatedAt:state.generatedAt,cached:true});
-    const report=await generateReport(state.profile,state.history,state.blueprint);
+    const report=await generateReport(state.profile,state.history,state.blueprint,state.untestedSkills,state.targetRole);
     const saved=await db().runTransaction(async tx=>{
       const snap=await tx.get(ref),s=snap.data();
       if(!s||s.reportLease?.id!==leaseId)throw new ApiError(409,'Report generation was superseded. Please refresh.');
