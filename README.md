@@ -1,65 +1,36 @@
-# AI Early Career Guide — Career Professionals (private live beta)
+# Career Professionals — V3: career-stage profile + choice-led adaptive interview
 
-A **separate Vercel project** for the Career Professionals assessment. Does not change the existing student site or its APIs. Built from the tested V4 prototype: 18 individually worded profile questions (plus conditional certification question), guided demo, 10 AI core topics and up to 5 genuinely adaptive follow-ups. Answer choices and **Other → Please specify** are preserved.
+**Purpose:** Replace only the question and AI/report logic on the existing Career Professionals private beta. Your student site, separate Professional Firebase project, private preview code and existing API key are unchanged. Payment (₹499), optional coupons and emailed reports are **planned, not included in this update**.
 
-## What works in this build
+## What changed
 
-- Live AI interview with OpenAI called **only from Vercel server functions**.
-- Private preview code required **once when creating** a test session.
-- Each assessment gets a random bearer token. Only its hashed form is saved in Firestore.
-- Profile, generated pending question and previous answers are saved in the `professionalAssessments_v1` Firestore collection. Your student collections are not modified.
-- Resume after a browser refresh **in the same tab** (uses `sessionStorage`; switching devices or closing the tab requires starting again). The database retains an otherwise inaccessible session until deletion/expiry.
-- Correct previous answer, export JSON and delete a complete test session.
-- A per-session cap of 19 AI generation attempts and a **best-effort** per-IP daily 5-session cap protect costs. Also set OpenAI project budget alerts/limits and use Vercel deployment protection while testing. IP-based limits are *not* a substitute for proper account authentication.
-- Private beta **only**. No customer accounts, payments, OTP, emailed reports or generated career advice report yet.
+- The FIRST profile question selects a career stage: employed, self-employed, between jobs, returning from a career break, recent graduate, student nearing graduation, or other.
+- Each stage sees its own questions, with individual industry/function questions where relevant. Recent graduates and students are not asked for a current job title or workplace achievements.
+- Most profile questions use single or multi-select choices. Whenever Other is available, an additional required free-text field appears.
+- The live AI interview has **7 essential stage-specific topics, at most 2 targeted follow-ups**, and uses choice-based answers by default. It may ask a single short free-text clarification only when essential and only after the core interview.
+- The report now interprets choices as self-reported preferences, not demonstrated professional competence, and distinguishes student projects from workplace achievements.
+- The AI interview and report now use OpenAI's **Responses API** with structured JSON output. They default to `gpt-6-astra` at `high` reasoning effort. Live access depends on your OpenAI API project's available models.
 
-## Step 1 — Create a NEW GitHub repo
+## Update GitHub: no more than 12 changed files
 
-Create a private GitHub repository, e.g. `aiearlycareerguide-professionals`. Upload the **contents** of this folder to the root of that repo (`index.html`, `api/`, `package.json`, `vercel.json`, etc.). Do not upload the folder itself, `.env.local`, API keys or a Firebase service-account JSON file.
+Download the **V3 update-only ZIP** and upload the 12 files in it to your EXISTING GitHub repository, `aiearlycareerguide-professionals`. Keep paths/folder structure exactly as they are. Each file in the ZIP is the COMPLETE replacement file, not a patch. Replace the existing versions and commit as one update (or two batches if GitHub's upload UI refuses the combined upload). DO NOT delete any existing unchanged files. Do not upload a Firebase JSON private key.
 
-## Step 2 — Firebase setup
+The files to replace are `index.html`, `api/_lib/ai.js`, `api/_lib/interview-logic.js`, `api/_lib/report.js`, `api/_lib/store.js`, `api/next-question.js`, `api/generate-report.js`, `vercel.json`, `tests/logic.test.js`, `tests/report.test.js`, `README.md` and `.env.example`.
 
-Use your **new separate Firebase project** for Career Professionals. Enable Firestore in production mode. The application automatically creates `professionalAssessments_v1` and `professionalBetaDaily_v1`. Keep the student project unchanged.
+### Vercel: two small setting changes
 
-From Firebase Console → Project Settings → Service Accounts → Generate new private key, download your service-account JSON securely. In Vercel, add an environment variable named **`FIREBASE_SERVICE_ACCOUNT_JSON`** and paste the **entire file contents** (including the opening and closing braces) as its value. This is server-side only. **Never upload the JSON key to GitHub, paste it into a public encoder, or share it in chat or screenshots.** The previous `FIREBASE_SERVICE_ACCOUNT_BASE64` method remains supported as an alternative; configure **one or the other**, not both.
+1. Open your Professional Vercel project → Settings → Environment Variables. **Edit the existing `OPENAI_MODEL`** from `gpt-4o-mini` to `gpt-6-astra`. Do not create a second variable of the same name. Keep the existing `OPENAI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT_JSON`, and `PREVIEW_ACCESS_CODE` unchanged.
+2. Optional: add `OPENAI_REASONING_EFFORT` = `high` (already the built-in default). For exceptionally challenging analyses you may set `max`, but this increases cost and latency. Optional `REPORT_OPENAI_MODEL` and `REPORT_REASONING_EFFORT` let you use separate report settings.
+3. Redeploy after **both** the GitHub commit and environment variable change are complete. Environment-variable edits alone usually require a redeploy to take effect.
+4. If an AI request reports that the model is unavailable, check model access and billing on your OpenAI **API project**; ChatGPT subscriptions don't grant model API access. Set `OPENAI_MODEL` to the strongest supported reasoning model you can access, then redeploy. The code uses Responses API with strict JSON-schema output; do not fall back to a model that doesn't support it.
+5. **Start a fresh assessment** after deployment. Existing saved sessions retain their previous questions and may not follow the revised flow. Keep this private beta restricted to trusted testers; high-end reasoning models can be costly, so review API usage and spending alerts before testing many assessments.
 
-**Data retention:** By default Firestore does not automatically purge records. For a 30-day preview retention period, enable Firestore TTL in your project for collection group `professionalAssessments_v1` using the `retainUntil` timestamp field, and for `professionalBetaDaily_v1` using the same field. Verify TTL operation in Firebase Console. TTL deletion is asynchronous, not guaranteed at the exact expiry time. Each tester can also delete their current session in-app after completion. Access expires after 7 days regardless of TTL.
+### Testing the new version
 
-## Step 3 — Deploy to a NEW Vercel project
+Open your deployed Vercel URL (or open `index.html` locally for the guided preview) and try at least three separate test profiles: employed, recent graduate and returning after a career break. Confirm that each receives different static questions and career-appropriate AI questions. In the live version, complete 7–9 answer choices and generate a report. Confirm that the report does not invent achievements or assume the graduate held a paid job. Test Other + Please specify and Back/Review.
 
-1. Vercel dashboard → **Add New → Project** → import `aiearlycareerguide-professionals` (not the student repository).
-2. Framework: **Other**; root: `./`. Vercel should recognize the `/api/*.js` serverless functions automatically.
-3. Add these **four private environment variables** in Settings → Environment Variables (Production and Preview as needed):
+Your original beta protections remain: server-side Firebase and OpenAI secrets, one-time private preview code at the start, opaque session tokens, restricted preview quotas and cached completed reports. No customer-facing paid checkout, coupons or email reports are added here.
 
-| Variable | Example / explanation |
-| --- | --- |
-| `OPENAI_API_KEY` | Your private key from an OpenAI project with budget controls |
-| `OPENAI_MODEL` | `gpt-4o-mini` (or a compatible structured-output model) |
-| `PREVIEW_ACCESS_CODE` | A unique 32+-character code shared only with testers, **not** your OpenAI key |
-| `FIREBASE_SERVICE_ACCOUNT_JSON` | Paste the entire downloaded Firebase service-account JSON file contents from Step 2 |
+### Developer tests
 
-4. Deploy. Open `https://<your-vercel-project>.vercel.app/api/health`; `ready` should be `true`. It never reveals your secrets.
-5. Open your new Vercel URL, complete the professional profile, select **Start live AI interview**, enter the private code and accept the data-use notice. Answer a few questions, refresh and use **Resume my saved interview**.
-6. Verify Firestore shows a new document under `professionalAssessments_v1` with profile, history and current question. Finish the interview, download your answers and use **Delete my test session**. Verify the document disappears.
-
-If Firestore or OpenAI responds with an error, check Vercel's server function logs **without copying secrets or participants' answers**.
-
-## Step 4 — Connect the existing domain *after* the Vercel URL works
-
-Keep the student app untouched initially and test on the separate Vercel project URL. The professional app already detects `/careerprofessionals` and calls `/careerprofessionals/api/*` when hosted at that path. To use `www.aiearlycareerguide.com/careerprofessionals`, configure the **existing site's** Vercel reverse-proxy rewrites for both `/careerprofessionals` and `/careerprofessionals/api/:path*` to the professional deployment, and confirm that forwarding, authentication headers and session restore work. Do this only after the private beta is tested, and do not replace the student site's existing `vercel.json` wholesale. See `DOMAIN-ROUTING.md` for a proposed rewrite to validate against your actual Vercel project settings.
-
-## Local development and tests
-
-With Node 20+ installed: `npm install`, copy `.env.example` to `.env.local` and enter real values **locally**, then run `npx vercel dev`. The offline guided demo still works by opening `index.html` directly, but live AI needs a deployed or local Vercel backend. Run `npm test` for automated validation; the tests mock OpenAI and do not require Firebase credentials or place real AI calls. Database integration must be checked on the deployed preview.
-
-## Privacy and launch restrictions
-
-The private preview code is a shared tester gate, not a paid customer login. Never distribute this version as a public paid assessment. Require verified user login/OTP, consent and privacy terms, durable account recovery, enforceable per-user quotas, payments and report generation before launch. The browser receives only its own session bearer token and data; server functions use Firebase Admin credentials. Restrict tester access with Vercel deployment protection if available. Obtain user permission before using identifiable career data; avoid proprietary employer or candidate information in a preview.
-
-## Live V2: personalised report beta
-
-This release adds `api/generate-report.js` and `api/_lib/report.js`. After completing a **live** AI interview, testers can generate an evidence-based report. The server saves the generated report on the existing Firestore session and returns the cached report on later requests, rather than charging for a new generation. The report can be printed/saved as PDF using the browser or exported as JSON. Guided offline demo sessions do not generate AI reports.
-
-**Deploy:** Replace the full contents of the repository with this package, preserving the `api/` and `tests/` directories. No new environment variables are required. Keep your existing `FIREBASE_SERVICE_ACCOUNT_JSON`, `OPENAI_API_KEY`, `OPENAI_MODEL`, and `PREVIEW_ACCESS_CODE` in Vercel. Commit and wait for the new Vercel deployment. Existing live beta sessions remain in Firestore; completed sessions can generate reports while their 7-day access tokens remain valid. Do not upload Firebase keys or `.env` files to GitHub.
-
-**Beta safeguards:** Reports use only saved self-reported responses, avoid arbitrary numerical scores, and identify evidence gaps. Report generation is limited to two attempts per session. The private beta has no user login, payment, email delivery or public report sharing; keep the preview code restricted to trusted testers. Report records follow the same retention policy as the assessment session. The optional Firestore TTL must be configured separately for the `retainUntil` field.
+Run `npm test` (Node 20+). All tests mock OpenAI; real model access and the Firestore integration require a live smoke test after redeployment.

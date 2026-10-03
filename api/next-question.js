@@ -16,7 +16,7 @@ export default async function handler(req,res){
       const now=Date.now(),lease=s.generationLease;
       if(lease && lease.until > now)throw new ApiError(409,'A question is already being generated. Please retry in a few seconds.');
       leaseId=crypto.randomUUID();
-      tx.update(ref,{generationLease:{id:leaseId,until:now+40000},callsUsed:s.callsUsed+1,updatedAt:new Date()});
+      tx.update(ref,{generationLease:{id:leaseId,until:now+115000},callsUsed:s.callsUsed+1,updatedAt:new Date()});
       return {kind:'generate',profile:s.profile,history:s.history};
     });
     if(result.kind==='existing')return output(res,200,{done:false,...result.state});

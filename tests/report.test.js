@@ -10,7 +10,7 @@ test('validates an evidence-based report and exact chronological plan',()=>{
 });
 test('generates report with structured OpenAI output and server-side key',async()=>{
  const old=globalThis.fetch,key=process.env.OPENAI_API_KEY;process.env.OPENAI_API_KEY='mock-key';let calls=0;
- globalThis.fetch=async(url,opts)=>{calls++;assert.equal(url,'https://api.openai.com/v1/chat/completions');assert.equal(opts.headers.Authorization,'Bearer mock-key');assert.equal(JSON.parse(opts.body).response_format.type,'json_schema');return {ok:true,json:async()=>({choices:[{message:{content:JSON.stringify(report)}}]})};};
+ globalThis.fetch=async(url,opts)=>{calls++;assert.equal(url,'https://api.openai.com/v1/responses');assert.equal(opts.headers.Authorization,'Bearer mock-key');assert.equal(JSON.parse(opts.body).text.format.type,'json_schema');assert.equal(JSON.parse(opts.body).reasoning.effort,'high');return {ok:true,json:async()=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(report)}]}]})};};
  try{const generated=await generateReport({currentJobTitle:'Manager'},[{question:'What did you achieve?',answer:'I coordinated teams.',category:'Achievement'}]);assert.equal(generated.strengths[0].strength,'Stakeholder communication');assert.equal(calls,1);}
  finally{globalThis.fetch=old;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;}
 });

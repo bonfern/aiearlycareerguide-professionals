@@ -5,7 +5,7 @@ import {loadFirebaseServiceAccount} from './firebase-config.js';
 export {ApiError,sha,safeEqual,validateAnswer};
 
 export const COLLECTION = 'professionalAssessments_v1';
-export const MAX_AI_CALLS = 19;
+export const MAX_AI_CALLS = 12;
 const ACCESS_MS = 7 * 24 * 60 * 60 * 1000;
 const RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -62,5 +62,5 @@ export function parseBody(req,max=24000) {
   return b;
 }
 export function safeState(session) {
-  return { status:session.status, profile:session.profile, answered:session.history?.length||0, history:(session.history||[]).map(({question,category,answer})=>({question,category,answer})), question:session.currentQuestion||null, maxQuestions:15, accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null };
+  return { status:session.status, profile:session.profile, answered:session.history?.length||0, history:(session.history||[]).map(({question,category,answer})=>({question,category,answer})), question:session.currentQuestion||null, maxQuestions:9, accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null };
 }

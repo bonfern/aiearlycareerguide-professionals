@@ -16,7 +16,7 @@ export default async function handler(req,res){
       if(s.reportCallsUsed>=2)throw new ApiError(429,'Report generation limit reached for this preview session.');
       if(s.reportLease?.until>Date.now())throw new ApiError(409,'Your report is already being generated. Please wait and try again.');
       leaseId=crypto.randomUUID();
-      tx.update(ref,{reportLease:{id:leaseId,until:Date.now()+80000},reportCallsUsed:(s.reportCallsUsed||0)+1,updatedAt:new Date()});
+      tx.update(ref,{reportLease:{id:leaseId,until:Date.now()+175000},reportCallsUsed:(s.reportCallsUsed||0)+1,updatedAt:new Date()});
       return {kind:'generate',profile:s.profile,history:s.history};
     });
     if(state.kind==='cached')return output(res,200,{report:state.report,generatedAt:state.generatedAt,cached:true});

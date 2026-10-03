@@ -1,5 +1,6 @@
 {
   "version":2,
+  "functions":{"api/next-question.js":{"maxDuration":120},"api/generate-report.js":{"maxDuration":180}},
   "headers":[{"source":"/(.*)","headers":[
     {"key":"X-Content-Type-Options","value":"nosniff"},
     {"key":"Referrer-Policy","value":"no-referrer"},
