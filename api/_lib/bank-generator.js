@@ -24,24 +24,15 @@ const MAP_INSTRUCTIONS=[
  'Do not generate questions yet. Return only the required structured data.'
 ].join('\n');
 const BANK_INSTRUCTIONS=[
- 'Build a challenging but EASY-TO-READ competency assessment for the exact role and seniority provided.',
- 'Create exactly THREE distinct multiple-choice questions PER supplied skill, in skill order. Do not alter any skill names or IDs.',
- 'For technical skills: question 1 tests applied technical knowledge; question 2 is an advanced work scenario; question 3 tests a different applied subskill.',
- 'For behavioural skills: use three short realistic situations, with the second involving a more demanding trade-off.',
- 'Each question should be 20–40 everyday English words, at most 55. Use one clear decision and no more than two relevant constraints.',
- 'The challenge is JUDGMENT, not difficult vocabulary. Match the complexity of the decision to the target job, especially for senior roles.',
- 'Make options A–D FOUR PLAUSIBLE decisions that a reasonably competent person might actually consider. The fifth must be exactly Not sure.',
- 'All four decisions must address the actual problem and sound professionally responsible; never use strawmen such as ignoring the issue, doing nothing, blindly approving, hiding risks, or waiting for harm.',
- 'Make the WRONG options tempting for different defensible reasons, but weaker in this situation: e.g. reasonable action at the wrong time, correct action with narrower scope, useful short-term fix that misses a constraint, or a valid strategy with a greater risk.',
- 'Ensure exactly ONE BEST answer based on the stated objective and constraints. Do not include two equally defensible choices. If several could be best, add one brief decisive constraint to the question.',
- 'Avoid verbal giveaways: the right answer must NOT always be the longest, most detailed, most cautious or only one mentioning data, consultation, measurement or stakeholders.',
- 'Keep choices parallel, balanced in specificity and length (ideally 5–12 words; never more than 18) and use distinct practical actions. Avoid absolute words such as always, never, only or immediately unless genuinely necessary.',
- 'Include an explicit PRIVATE rationale explaining why the best answer wins GIVEN the scenario, and why each of the other three plausible actions loses on a particular trade-off (roughly 90–400 characters).',
- 'For EACH SKILL: use at least two different subskills, rotate the type of trade-off tested and vary correct-answer positions.',
- 'For advanced scenarios, prefer tough priorities among good actions rather than obscure theory, trick questions, or extra words.',
- 'Set answerKey to the one best choice (0–3). Follow supplied skill exactly for category, competencyId, questionKind and difficulty.',
- 'Before returning JSON, silently review all four options: if one is absurd or clearly irresponsible, replace it with a credible alternative. If the best answer jumps out by wording or length, rebalance the four choices.',
- 'Return only questionBank in the required structured format.'
+ 'Create exactly THREE different, easy-to-read, CHALLENGING questions PER supplied skill, grouped by skill.',
+ 'Preserve skill IDs and names exactly. Technical: knowledge/applied, scenario/advanced, scenario/applied. Behavioural: scenario/applied, scenario/advanced, scenario/applied.',
+ 'Each 20–40 words (max 55). Present one realistic job decision with at most two relevant constraints. Use normal English.',
+ 'Options: four DISTINCT plausible professional actions, preferably 5–12 words each, at most 18, followed by exactly Not sure.',
+ 'One option must be BEST for the specific objective and constraints. Make the other three reasonable but weaker on timing, scope, trade-off or risk.',
+ 'No obvious bad options: ignoring problems, doing nothing, hiding risks, or blindly approving. Avoid absolute-word and length clues.',
+ 'Use at least two distinct subskills across the three questions per skill. Match the decisions to the role and seniority.',
+ 'Provide a private rationale of 25–400 characters for each correct choice. Vary the correct positions; they will also be shuffled by the server.',
+ 'Keep category=exact skill name, competencyId=exact skill ID, questionKind and difficulty matching question position. Return only questionBank.'
 ].join('\n');
 function textFromResponse(data){return (data.output||[]).filter(i=>i.type==='message').flatMap(i=>i.content||[]).filter(c=>c.type==='output_text').map(c=>c.text).join('');}
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -138,7 +129,6 @@ function verifyBatch(data,skills){
    if(q.category!==s.name||q.questionKind!==kind||q.difficulty!==difficulty)throw Error(`Wrong category/kind/difficulty for ${s.id} item ${i+1}`);
    if(typeof q.text!=='string'||q.text.trim().length<20||q.text.trim().split(/\s+/).length>55)throw Error(`Invalid question wording for ${s.id}`);
    if(!Array.isArray(q.options)||q.options.length!==5||q.options[4]!=='Not sure'||q.options.some(o=>typeof o!=='string'||o.trim().length<3||o.trim().split(/\s+/).length>18)||new Set(q.options.map(o=>o.toLowerCase())).size!==5||!Number.isInteger(q.answerKey)||q.answerKey<0||q.answerKey>3)throw Error(`Invalid options/answer for ${s.id}`);
-   const quality=optionQuality(q);if(quality)throw Error(`${s.id} question ${i+1}: ${quality}`);
    if(typeof q.rationale!=='string'||q.rationale.length<25||q.rationale.length>650||typeof q.subskill!=='string'||q.subskill.length<5||q.subskill.length>110)throw Error(`Invalid grading explanation/subskill for ${s.id}`);
   }
   if(new Set(qs.map(q=>q.subskill.toLowerCase().trim())).size<2)throw Error(`${s.id}: cover at least two distinct subskills`);
@@ -155,6 +145,26 @@ async function validatedCall({validator,...opts}){
    if(attempt===2)throw new ApiError(502,`The ${opts.label} failed validation. Please try again.`);
   }
  }
+}
+// Quality is checked separately from schema and grading integrity. A minor
+// wording concern must never invalidate all questions and strand a purchaser.
+function qualityWarnings(items){
+ const warnings=[];
+ for(const q of items){
+  const issue=optionQuality(q);
+  // Clearly irresponsible answers are a substantive defect; regenerate that
+  // batch. Stylistic length/wording heuristics are advisory only.
+  if(issue?.startsWith('Replace obviously irresponsible'))
+   throw Error(`${q.competencyId}: ${issue}`);
+  if(issue)warnings.push({skill:q.competencyId,issue});
+ }
+ return warnings;
+}
+function checkedQuestionBatch(raw,skills){
+ const items=verifyBatch(raw,skills);
+ const warnings=qualityWarnings(items);
+ if(warnings.length)console.warn('Assessment option quality warnings',{skills:skills.map(s=>s.id),count:warnings.length,types:[...new Set(warnings.map(w=>w.issue))]});
+ return items;
 }
 function batches(skills){
  // At most 3 concurrent small responses, avoiding a single enormous JSON result.
@@ -173,7 +183,7 @@ export async function generateAssessmentBank(profile){
  const chunks=await Promise.all(grouped.map(async(skills,index)=>validatedCall({
   label:`question batch ${index+1}`,model,deadline,system:BANK_INSTRUCTIONS,
   user:{targetRole:map.targetRole,skills},name:'career_question_batch',schema:BATCH_SCHEMA,tokens:7000,
-  validator:raw=>verifyBatch(raw,skills)
+  validator:raw=>checkedQuestionBatch(raw,skills)
  })));
  try{return validateAssessmentBank({...map,questionBank:balanceAnswerPositions(chunks.flat(),map.competencies)});}
  catch(error){console.error('Final assessment validation failed',{reason:error.message});

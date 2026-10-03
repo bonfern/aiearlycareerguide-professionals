@@ -1,12 +1,12 @@
-Career Professionals V18: Stronger Answer Choices
+V19 — Fix assessment preparation after the V18 question-quality update
 
-UPLOAD THESE 3 REPLACEMENT FILES TO YOUR PROFESSIONAL GITHUB REPOSITORY:
-- api/_lib/bank-generator.js
-- api/_lib/question-cache.js
-- tests/logic.test.js
+Upload/replace these three complete files in your Professional GitHub repository:
+1. index.html
+2. api/_lib/bank-generator.js
+3. tests/v19-generation-recovery.test.js (NEW)
 
-Do not upload READ-ME-FIRST.txt unless you want it for reference.
-Commit all three replacements and wait for Vercel Ready.
-Start a NEW assessment to see the tougher multiple-choice banks; ongoing assessments keep their previously saved bank.
-V18 changes the shared-bank version so matching new users share the newly generated bank instead of reusing earlier easy questions.
-No new API endpoints, environment variables or third-party libraries.
+Do not upload this instruction file. Do not delete the existing v18 question-cache.js. The version remains v18 so valid shared question banks are still reused. No changes to Firebase, OpenAI, Razorpay, Resend or Vercel settings are needed.
+
+After deployment: use your EXISTING verified purchase / incomplete assessment. Press Start live AI interview again; no additional purchase is needed. If it fails, the actual API error will be shown on the profile review panel. For detailed diagnosis, find the /api/next-question request under your Vercel Runtime Logs; do not share tokens.
+
+Root cause is not confirmed without live logs. Local code review shows that V18 treated subjective wording checks as fatal, causing expensive retries and potentially exhausting the request. V19 makes style/length warnings nonfatal while keeping hard structural validation and rejecting obviously irresponsible alternatives. Real OpenAI/Firebase connections still need live verification.
