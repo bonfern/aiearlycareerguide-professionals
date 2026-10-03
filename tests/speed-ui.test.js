@@ -6,7 +6,9 @@ const html=readFileSync(new URL('../index.html', import.meta.url),'utf8');
 test('loading state is explicit about one-time preparation and fast follow-ups',()=>{
  assert.match(html,/Identifying the essential skills/);
  assert.match(html,/Retrieving your next prepared question/);
- assert.match(html,/skill areas sampled/);
+ assert.match(html,/essential skills completed/);
+ assert.doesNotMatch(html,/finishEarlyBtn|Evidence confidence:/);
+ assert.doesNotMatch(html,/id="downloadBtn"|id="deleteSessionBtn"|id="reportBackBtn"/);
  new Script(html.match(/<script>([\s\S]*?)<\/script>/)[1]);
 });
 test('report UI shows competency, specific gap, untested requirements and action plan without answer recap',()=>{

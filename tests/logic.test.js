@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {Script,runInNewContext} from 'node:vm';
-import {MAX_QUESTIONS,groupFromProfile,validatePayload,validateBlueprint,competencyProgress,earlyFinishEligibility,nextCompetency} from '../api/_lib/interview-logic.js';
+import {MAX_QUESTIONS,groupFromProfile,validatePayload,validateBlueprint,competencyProgress,earlyFinishEligibility,nextCompetency,scoredHistory} from '../api/_lib/interview-logic.js';
 import {validateAssessmentBank,choosePreparedQuestion} from '../api/_lib/assessment-bank.js';
 import {generateAssessmentBank} from '../api/_lib/bank-generator.js';
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
@@ -36,14 +36,27 @@ test('bank covers only 4–7 essential skills and lists additional untested requ
  assert.throws(()=>validateAssessmentBank({...raw,questionBank:bank.slice(1)}),/3 prepared items|Include 3/);
  assert.throws(()=>validateAssessmentBank({...raw,untestedSkills:[{...extras[0],name:skills[0].name},extras[1]]}),/Repeated/);
 });
-test('full assessment samples all core skills and probes only mixed answers',()=>{
+test('all 3 prepared questions are mandatory for every essential skill, even when the first 2 agree',()=>{
  const two=skills.flatMap(skill=>[answer(skill,0,true),answer(skill,1,true)]);
- assert.equal(nextCompetency(skills,two),null);assert.equal(competencyProgress(skills,two).assessed,5);
+ assert.equal(nextCompetency(skills,two).id,'s1');assert.equal(competencyProgress(skills,two).assessed,0);
+ const three=skills.flatMap(skill=>[answer(skill,0,true),answer(skill,1,true),answer(skill,2,true)]);
+ assert.equal(nextCompetency(skills,three),null);assert.equal(competencyProgress(skills,three).assessed,5);
  const mixed=[answer(skills[0],0,true),answer(skills[0],1,false)];
  assert.equal(nextCompetency(skills,mixed).id,'s1');assert.equal(competencyProgress(skills,mixed).assessed,0);
  assert.equal(nextCompetency(skills,[...mixed,answer(skills[0],2,false)]).id,'s2');
- assert.equal(earlyFinishEligibility(skills,two).eligible,true);
- assert.equal(earlyFinishEligibility(skills,Array.from({length:7},()=>answer(skills[0],0,true))).eligible,false);
+ assert.equal(earlyFinishEligibility(skills,three).eligible,false);
+ const submitSource=readFileSync(new URL('../api/submit-answer.js',import.meta.url),'utf8');
+ assert.match(submitSource,/correct:answer===q\.options\[q\.answerKey\]/);
+ const reportSource=readFileSync(new URL('../api/generate-report.js',import.meta.url),'utf8');
+ assert.match(reportSource,/coverage\.assessed!==coverage\.total/);
+ assert.match(reportSource,/skill\.answered<3/);
+ const backSource=readFileSync(new URL('../api/back.js',import.meta.url),'utf8');
+ assert.match(backSource,/publicQuestion\(last\.questionConfig\)/);
+});
+test('legacy saved questions are scored privately using their stored answer keys',()=>{
+ const q={competencyId:'s1',questionType:'knowledge',subskill:'Baseline validation',options:['Best option','Second option','Third option','Fourth option','Not sure'],answerKey:0,rationale:'The first option is right.'};
+ const [good,bad]=scoredHistory([{answer:'Best option',questionConfig:q},{answer:'Not sure',questionConfig:q}]);
+ assert.equal(good.correct,true);assert.equal(bad.correct,false);assert.equal(good.competencyId,'s1');
 });
 test('prepared questions require no subsequent OpenAI calls and never expose answer keys',()=>{
  const validated=validateAssessmentBank(raw);

@@ -16,7 +16,9 @@ const history=[
  {competencyId:'s1',correct:false,questionType:'scenario',subskill:'Handling resistance'},
  {competencyId:'s1',correct:false,questionType:'scenario',subskill:'Measuring adoption'},
  {competencyId:'s2',correct:true,questionType:'knowledge',subskill:'Baseline validation'},
- {competencyId:'s2',correct:false,questionType:'scenario',subskill:'Financial sign-off'}
+ {competencyId:'s2',correct:false,questionType:'scenario',subskill:'Financial sign-off'},
+ {competencyId:'s1',correct:false,questionType:'scenario',subskill:'Handling resistance'},
+ {competencyId:'s2',correct:true,questionType:'scenario',subskill:'Baseline validation'}
 ];
 const ai={summary:'The target role requires change leadership and benefit validation. Focus on the assessed development priorities.',
  skillAssessments:skills.map(s=>({id:s.id,name:s.name,targetBenchmark:s.benchmark,gap:'Practise the specific weaker subskill in a realistic case.',actions:['Complete a structured short practice exercise.','Ask a qualified mentor to review the work.'],practiceTask:'Create a role-specific project case study with measurable indicators.',successIndicator:'Demonstrate the case and explain a measurable improvement.'})),
@@ -45,7 +47,7 @@ test('detailed report covers every tested and untested skill, sets cautious labe
  const r=validateReport(ai,skills,history,untested,prefs);
  assert.equal(r.reportVersion,2);assert.equal(r.skillAssessments.length,2);assert.equal(r.additionalSkills.length,1);
  assert.equal(r.skillAssessments[0].priority,'High development priority');
- assert.equal(r.skillAssessments[0].evidenceLevel,'Limited — two or fewer questions');
+ assert(!Object.hasOwn(r.skillAssessments[0],'evidenceLevel'));assert.equal(r.skillAssessments[0].tested,3);
  assert(r.skillAssessments[0].learning.free.length>=1);
  assert.equal(r.additionalSkills[0].assessmentStatus,'Not tested');
  assert.deepEqual(r.learningPreferences,prefs);assert.equal(r.actionPlan.length,3);
@@ -56,13 +58,14 @@ test('incomplete assessment cannot fabricate a competence finding for untested s
  const r=validateReport(ai,skills,history.filter(h=>h.competencyId==='s1'),untested);
  assert.equal(r.skillAssessments[1].currentCompetency,'Not assessed');
  assert.equal(r.skillAssessments[1].priority,'Not assessed');
- assert.equal(r.skillAssessments[1].evidenceLevel,'Insufficient');
+ assert(!Object.hasOwn(r.skillAssessments[1],'evidenceLevel'));
 });
 
 test('email includes the summary, links, plan and escaped user-derived text',()=>{
  const r=validateReport({...ai,summary:'Assessment for <img src=x onerror=alert(1)>'},skills,history,untested);
  r.targetRole='Director Transformation';const html=receiptHtml(r);
  assert.match(html,/Essential competency overview/);assert.match(html,/Your immediate priorities/);
+ assert.doesNotMatch(html,/evidence confidence|limited evidence/i);
  assert.match(html,/Optional certifications/);assert.match(html,/Days 1–30/);
  assert.doesNotMatch(html,/<img src=x/);assert.match(html,/&lt;img/);
  assert.match(html,/https:\/\/www.open.edu/);
@@ -72,7 +75,7 @@ test('PDF email attachment is valid, multi-page capable and includes all core se
  const r=validateReport(ai,skills,history,untested);r.targetRole='Director Transformation';
  const b=buildReportPdf(r);assert.match(b.toString('latin1').slice(0,10),/%PDF-1\.4/);
  for(const marker of ['Essential skills','Other required skills','30 / 60 / 90-day roadmap','Progress and reassessment'])assert(b.toString('latin1').includes(marker));
- assert(b.length>2500);
+ assert(b.length>2500);assert(!b.toString('latin1').includes('Evidence: Limited'));
  const source=readFileSync(new URL('../api/_lib/commerce.js',import.meta.url),'utf8');assert.match(source,/attachments:\[/);assert.match(source,/application\/pdf/);
 });
 

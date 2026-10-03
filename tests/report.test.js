@@ -15,7 +15,8 @@ const history=[
  {competencyId:'s1',correct:false,questionType:'scenario',subskill:'Financial sign-off',expectedAnswer:'Validate with finance',rationale:'Finance validation is needed for benefits.'},
  {competencyId:'s1',correct:true,questionType:'scenario',subskill:'Financial sign-off',expectedAnswer:'Validate with finance',rationale:'Finance validation is needed for benefits.'},
  {competencyId:'s2',correct:false,questionType:'scenario',subskill:'Sponsor buy-in',expectedAnswer:'Clarify the trade-offs',rationale:'Clarity helps align sponsors.'},
- {competencyId:'s2',correct:false,questionType:'scenario',subskill:'Constructive challenge',expectedAnswer:'Respectfully challenge',rationale:'Challenge should be constructive.'}
+ {competencyId:'s2',correct:false,questionType:'scenario',subskill:'Constructive challenge',expectedAnswer:'Respectfully challenge',rationale:'Challenge should be constructive.'},
+ {competencyId:'s2',correct:false,questionType:'scenario',subskill:'Sponsor buy-in',expectedAnswer:'Clarify the trade-offs',rationale:'Senior alignment benefits from clarity.'}
 ];
 test('report includes assessed competence, gaps, all untested skills and 30/60/90 plan',()=>{
  assert(REPORT_SCHEMA.required.includes('untestedGuidance'));
