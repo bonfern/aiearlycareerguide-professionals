@@ -1,0 +1,18 @@
+V8 VERCEL HOBBY DEPLOYMENT FIX — 2 replacement files + 1 deletion
+
+YOUR REPOSITORY currently has 13 top-level API routes. Vercel Hobby allows up to 12.
+
+GitHub changes (all three are REQUIRED):
+1. Replace root index.html with the complete index.html in this ZIP.
+2. Replace api/create-order.js with the complete api/create-order.js in this ZIP.
+3. DELETE api/validate-coupon.js from GitHub (open it, use Delete file / trash icon, and commit).
+   Deleting is necessary: merely not uploading it does not remove an existing repository file.
+
+Do not upload this instructions file. Do not delete any file inside api/_lib.
+Commit all changes, wait for Vercel's new Production deployment to show Ready.
+Check /api/health, test coupon Apply, and try the 100% complimentary checkout.
+Your Firebase and Razorpay environment variables do not need to change.
+
+This reduces the number of top-level api/*.js handlers from 13 to 12.
+The coupon quote shares create-order.js but has no access to paid-session issuance.
+For future features, merge additional endpoints before introducing another function.

@@ -4,7 +4,22 @@ import {ORDERS,COUPONS,PRICE_PAISE,RESERVATION_MS,razorpay,readCoupon,cleanCode,
 export default async function handler(req,res){
  if(!postOnly(req,res))return;
  try{
-  const body=parseBody(req),email=cleanEmail(body.email),code=cleanCode(body.couponCode);
+  const body=parseBody(req);
+  // Quote-only requests share this function with checkout so Hobby deployments
+  // stay within Vercel's serverless-function limit. A quote never grants access.
+  const mode=String(req.query?.mode||new URL(req.url||'/', 'https://local.invalid').searchParams.get('mode')||'');
+  if(mode==='quote'){
+   const code=cleanCode(body.couponCode);
+   if(!code)return output(res,200,priceQuote(null));
+   const doc=await db().collection(COUPONS).doc(code).get();
+   if(!doc.exists)throw new ApiError(400,'Invalid coupon code.');
+   const coupon=readCoupon(doc.data(),code);
+   const used=Number(doc.data().usedCount||0),held=Object.keys(activeReservations(doc.data())).length;
+   if(coupon.maxUses&&used+held>=coupon.maxUses)throw new ApiError(400,'This coupon has reached its usage limit.');
+   return output(res,200,priceQuote(coupon));
+  }
+  if(mode)throw new ApiError(400,'Unknown checkout request.');
+  const email=cleanEmail(body.email),code=cleanCode(body.couponCode);
   if(body.consent!==true)throw new ApiError(400,'Please agree to the assessment data notice before payment.');
   if(!process.env.RAZORPAY_KEY_ID||!process.env.RAZORPAY_KEY_SECRET)throw new ApiError(503,'Payment is not configured yet.');
   const database=db(),nonce=crypto.randomBytes(32).toString('hex'),checkoutId=crypto.randomBytes(16).toString('hex');
