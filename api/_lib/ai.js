@@ -12,15 +12,23 @@ export function textFromResponse(data){return (data.output||[]).filter(i=>i.type
 export async function generateQuestion(profile,history,blueprint=null,target=null){
  if(!process.env.OPENAI_API_KEY)throw new ApiError(503,'AI service is not configured.');
  const model=process.env.OPENAI_MODEL||'gpt-6-astra';
+ // The first question constructs the entire competency map; subsequent calls
+ // generate only one question. Keep the same capable model, but avoid spending
+ // high reasoning and a 9,800-token budget on every individual follow-up.
+ const firstQuestion=!blueprint;
+ const reasoningEffort=firstQuestion?(process.env.OPENAI_REASONING_EFFORT||'high'):(process.env.OPENAI_FOLLOWUP_REASONING_EFFORT||'medium');
+ const outputBudget=firstQuestion?9800:4200;
+ const leanProfile=firstQuestion?profile:Object.fromEntries(['profileGroup','employmentStatus','careerObjective','targetJobTitle','targetFunction','targetIndustry','currentJobTitle','experienceYears','qualification'].filter(k=>typeof profile[k]==='string'&&profile[k]).map(k=>[k,profile[k]]));
+ const relevantHistory=firstQuestion?[]:history.filter(h=>h.competencyId===target?.id).map(h=>({subskill:h.subskill,correct:h.correct,difficulty:h.difficulty,questionType:h.questionType}));
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),115000);
  let response;
  try{
   response=await fetch('https://api.openai.com/v1/responses',{
    method:'POST',signal:controller.signal,headers:{Authorization:`Bearer ${process.env.OPENAI_API_KEY}`,'Content-Type':'application/json'},
-   body:JSON.stringify({model,reasoning:{effort:process.env.OPENAI_REASONING_EFFORT||'high'},max_output_tokens:9800,store:false,
+   body:JSON.stringify({model,reasoning:{effort:reasoningEffort},max_output_tokens:outputBudget,store:false,
     text:{format:{type:'json_schema',name:'career_competency_question',strict:true,schema:RESPONSE_SCHEMA}},
     input:[{role:'system',content:instruction(profile,history,blueprint,target)},
-     {role:'user',content:JSON.stringify({profile,priorResponses:history.map(h=>({competencyId:h.competencyId,subskill:h.subskill,question:h.question,answer:h.answer,correct:h.correct,questionType:h.questionType,difficulty:h.difficulty}))})}]
+     {role:'user',content:JSON.stringify({profile:leanProfile,previousAnswersForThisSkill:relevantHistory})}]
    })
   });
  }catch(error){if(error.name==='AbortError')throw new ApiError(504,'AI question generation timed out. Retry this question.');throw new ApiError(502,'Could not contact the AI service. Please retry.');}

@@ -6,6 +6,8 @@
 <style>
 :root{font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;color:#17253e;background:#f4f7fc}*{box-sizing:border-box}body{margin:0}header{background:#102447;color:white;padding:20px max(24px,calc((100vw - 960px)/2));font-weight:750}header small{display:block;color:#bcd0ed;font-weight:400;margin-top:5px}main{max-width:960px;margin:42px auto;padding:0 22px}.panel{background:#fff;border-radius:18px;padding:34px;box-shadow:0 8px 30px #10244712}h1{font-size:clamp(29px,4vw,44px);margin:0 0 14px}h2{font-size:clamp(23px,3vw,29px);margin:0 0 13px}p{line-height:1.6;color:#52617b}.eyebrow{color:#2163be;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px;margin-bottom:11px}.btn{border:0;border-radius:9px;padding:13px 20px;background:#1c59ac;color:white;font-size:15px;font-weight:700;cursor:pointer;margin-top:14px}.btn.secondary{background:#e9eff9;color:#173e78;margin-right:8px}.btn:disabled{opacity:.45;cursor:not-allowed}.hidden{display:none!important}.progress{height:8px;background:#e9eff9;border-radius:8px;margin:19px 0 28px}.progress span{display:block;height:100%;background:#2673c9;border-radius:8px;transition:width .2s}label{display:block;font-weight:650;margin:12px 0 8px}input:not([type=checkbox]),select,textarea{width:100%;padding:13px;border:1px solid #bfcce0;border-radius:8px;font:inherit;background:white;color:#17253e}textarea{min-height:105px}.hint{font-size:13px;color:#65748b;margin:10px 0}.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin:22px 0}.card{border:1px solid #dbe4f2;padding:18px;border-radius:12px}.card strong{display:block;margin-bottom:7px}.review{padding:14px 0;border-bottom:1px solid #e7ecf5;display:flex;justify-content:space-between;align-items:center;gap:12px}.review strong{display:block;margin-bottom:5px}.review .value{font-size:15px;color:#415371;white-space:pre-wrap}.notice{background:#f1f6ff;padding:15px;border-radius:9px;color:#345177;margin:20px 0}.choice-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:10px;margin-top:15px}.choice{display:flex;align-items:center;gap:10px;border:1.5px solid #ced9e9;border-radius:11px;padding:14px 12px;font-weight:550;margin:0;cursor:pointer;min-height:54px}.choice.selected{border-color:#2673c9;background:#eef5ff;box-shadow:0 0 0 1px #2673c9}.choice input{flex:0 0 auto;accent-color:#1c59ac;width:17px;height:17px;margin:0}.freeform{margin-top:14px}.row{display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap}.muted{font-size:13px;color:#63738a}.error{color:#b42318;font-size:13px;font-weight:650;min-height:20px;margin:12px 0 0}.linkbtn{background:none;border:0;color:#1c59ac;font-weight:700;cursor:pointer;padding:8px;white-space:nowrap}.num{color:#59708f;font-size:13px}.sectionhead{font-weight:750;margin:23px 0 0}.tag{display:inline-block;background:#e8f1ff;border-radius:50px;padding:5px 12px;font-size:13px;color:#245c9b}.footeractions{margin-top:19px}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid #89baf9;outline-offset:3px}@media(max-width:600px){main{margin:22px auto}.panel{padding:22px}.choice-grid{grid-template-columns:1fr}.review{align-items:flex-start}}
 .report-block{padding:16px 0;border-top:1px solid #dce6f2}.report-block h3{color:#163b72}.report-item{padding:13px 0;border-bottom:1px solid #e8eef7}.report-item strong{display:block;color:#193b69;margin-bottom:4px}.report-item p{margin:5px 0 9px}.report-list{padding-left:21px;line-height:1.7}.report-meta{font-size:13px;color:#586b83}.report-note{background:#f1f6ff;border-left:4px solid #4075b6;padding:12px 16px;margin:18px 0}@media print{body{background:white}header,.no-print,main>section:not(#report){display:none!important}main{max-width:none;margin:0;padding:0}#report{display:block!important;box-shadow:none;padding:0}.report-item{break-inside:avoid}.report-note{break-inside:avoid}}
+/* Visible AI processing state; no misleading estimated completion time. */
+.ai-wait{text-align:center;padding:24px 0 18px}.ai-spinner{height:44px;width:44px;border:4px solid #dbe9fc;border-top-color:#1c59ac;border-radius:50%;animation:ai-turn .85s linear infinite;margin:0 auto 23px}@keyframes ai-turn{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.ai-spinner{animation:none;border-top-color:#1c59ac}}
 </style>
 </head>
 <body>
@@ -16,6 +18,7 @@
 <section id="review" class="panel hidden"><div class="eyebrow">Profile review</div><h2>Your professional profile</h2><p>Review your answers. Select <strong>Edit</strong> beside any item to change it without starting again.</p><div id="answers"></div><button class="btn secondary" id="reviewBack">← Back to profile</button><button class="btn secondary hidden" id="interviewBtn">Legacy offline preview →</button><button class="btn" id="liveStartBtn">Start live AI interview →</button></section>
 <section id="interview" class="panel hidden"><div class="eyebrow">Interview preview · Preset questions, not live AI</div><div class="row"><h2 id="interviewTitle"></h2><span class="tag" id="interviewCategory"></span></div><div class="progress" role="progressbar" aria-label="Interview completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="interviewProgress"><span id="interviewBar"></span></div><h3 id="interviewQuestion"></h3><p id="interviewHint" class="hint"></p><div id="interviewField"></div><div id="interviewError" class="error" aria-live="polite"></div><p class="hint">Offline preview: preset questions to try the format. The live interview adapts to your career stage and answers.</p><div class="footeractions"><button class="btn secondary" id="interviewBack" type="button">← Back</button><button class="btn" id="interviewNext" type="button">Continue →</button></div></section>
 <section id="liveSetup" class="panel hidden"><div class="eyebrow">Secure development preview</div><h2>Live adaptive AI interview</h2><p>A role-specific map of technical and behavioural competencies guides realistic multiple-choice questions. Further questions are asked when evidence is mixed or incomplete. This is a development preview, not the paid assessment.</p><div class="notice">Private beta: your answers are stored in Firebase for this test and shared with OpenAI to generate questions. Your preview access expires after 7 days. Records remain until deleted by you or removed by the administrator; the optional 30-day Firestore deletion rule must be enabled separately. Please avoid uploading confidential employer information.</div><label for="previewCode">Private preview access code</label><input id="previewCode" type="password" autocomplete="off" placeholder="Code set in your Vercel environment"><p class="hint">Enter the private tester code from the project owner. Never enter an OpenAI API key here.</p><label class="choice" for="consent" style="margin-top:18px"><input id="consent" type="checkbox"><span>I understand my profile and interview answers are stored for this private beta and shared with OpenAI to generate questions.</span></label><div class="error" id="liveSetupError" aria-live="polite"></div><button id="liveSetupBack" class="btn secondary" type="button">← Back to profile</button><button id="liveBegin" class="btn" type="button">Begin live interview →</button></section>
+<section id="liveLoading" class="panel hidden" aria-live="polite" aria-busy="true"><div class="ai-wait" role="status"><div class="ai-spinner" aria-hidden="true"></div><h2 id="liveLoadingTitle">Preparing your next question…</h2><p id="liveLoadingDescription">Your answer is being processed. Generating a role-specific question may take several seconds for complex scenarios.</p><p class="hint">Please keep this tab open. Your previous answers have been saved.</p></div></section>
 <section id="liveInterview" class="panel hidden"><div class="eyebrow">Live AI interview</div><div class="row"><h2 id="liveTitle">Role-specific skills assessment</h2><span class="tag" id="liveCategory"></span></div><div class="progress" role="progressbar" aria-label="AI interview progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="liveProgress"><span id="liveBar"></span></div><p id="liveProgressText" class="hint" aria-live="polite">Mapping your target-role skills</p><h3 id="liveQuestion"></h3><p id="liveHint" class="hint"></p><div id="liveField"></div><div id="liveError" class="error" aria-live="polite"></div><p class="hint">The number of questions adapts to your role and the evidence collected. You can correct your most recent answer.</p><div class="footeractions"><button type="button" class="btn secondary" id="liveBack">← Back</button><button type="button" class="btn" id="liveNext">Continue →</button><button type="button" class="btn hidden" id="retryNext">Retry generating question →</button></div></section>
 <section id="complete" class="panel hidden"><div class="eyebrow">Assessment complete</div><h2>You've completed the skill assessment</h2><p>Your answers have been saved to your private beta session. You can export them now. Generate your personalised career report or export your answers. Payment and email delivery are not yet available.</p><button class="btn" id="reportBtn" type="button" class="btn hidden">Generate my career report →</button><button class="btn secondary" id="downloadBtn">Download my answers (JSON)</button><button class="btn secondary" id="restartBtn" type="button">Start New Assessment</button><button class="btn secondary" id="deleteSessionBtn">Delete my test session</button><div class="error" id="reportError" aria-live="polite"></div><div class="error" id="deleteError" aria-live="polite"></div></section>
 <section id="report" class="panel hidden"><div class="eyebrow">Personalised career report · Private beta</div><h2>Your career development report</h2><p class="hint">Based on your profile and scenario-based assessment answers. Suggestions are for exploration, not verified suitability or hiring decisions.</p><p id="reportDate" class="muted"></p><div id="reportContent"></div><div class="footeractions no-print"><button class="btn" id="printReportBtn" type="button">Print / Save as PDF</button><button class="btn secondary" id="downloadReportBtn" type="button">Download report (JSON)</button><button class="btn secondary" id="reportBackBtn" type="button">← Back to assessment</button><button class="btn secondary" id="reportNewBtn" type="button">Start New Assessment</button><button class="btn secondary" id="reportHistoryBtn" type="button">Previous assessments</button></div><div class="error" id="reportPageError" aria-live="polite"></div></section>
@@ -229,6 +232,11 @@ function startFreshAssessment(){
  $('consent').checked=false;$('resumeError').textContent='';$('reportError').textContent='';
  updateReportAvailability();show('profile');render();
 }
+function showQuestionWait(first=false){
+ $('liveLoadingTitle').textContent=first?'Mapping your target-role skills…':'Preparing your next question…';
+ $('liveLoadingDescription').textContent=first?'Building a competency map and preparing your first question. This can take longer than later questions.':'Your answer is being processed. We are preparing the next role-specific question; this may take several seconds for complex scenarios.';
+ show('liveLoading');
+}
 function setLiveBusy(b){liveBusy=b;for(const id of ['liveNext','liveBack','liveBegin','resumeBtn','retryNext'])$(id).disabled=b;$('liveNext').textContent=b?'Saving your answer…':'Continue →'}
 async function apiCall(route,body={},isStart=false){
  const headers={'Content-Type':'application/json'};
@@ -249,6 +257,7 @@ function updateFromServer(result){
 }
 async function fetchNext(){
  $('retryNext').classList.add('hidden');$('liveNext').classList.remove('hidden');
+ showQuestionWait(!liveProgressState.total && !liveHistory.length);
  const state=await apiCall('next-question');
  if(state.done){currentLiveQuestion=null;show('complete');updateReportAvailability();return;}
  currentLiveQuestion=state.question;liveProgressState=state.progress||liveProgressState;renderLive();show('liveInterview');
@@ -257,11 +266,11 @@ async function beginLive(){
  const code=$('previewCode').value.trim();
  if(!liveSession&&!code){$('liveSetupError').textContent='Enter the private preview access code.';return;}
  if(!liveSession&&!$('consent').checked){$('liveSetupError').textContent='Please confirm that you understand how your data will be used.';return;}
- $('liveSetupError').textContent='';setLiveBusy(true);
+ $('liveSetupError').textContent='';setLiveBusy(true);showQuestionWait(true);
  try{
   if(!liveSession){const p=profileForAPI();const session=await apiCall('start',{previewCode:code,profile:p},true);savedServerProfile=p;storeSession(session);$('previewCode').value='';}
   await fetchNext();
- }catch(e){$('liveSetupError').textContent=`${e.message} ${liveSession?'Your session has been saved. Press Begin again to retry.':''}`;}
+ }catch(e){show('liveSetup');$('liveSetupError').textContent=`${e.message} ${liveSession?'Your session has been saved. Press Begin again to retry.':''}`;}
  finally{setLiveBusy(false);}
 }
 function renderLive(restoredAnswer=''){
@@ -311,7 +320,7 @@ async function submitLive(){
   const old=currentLiveQuestion;
   const savedAnswer=await apiCall('submit-answer',{questionId:old.id,answer});liveProgressState=savedAnswer.progress||liveProgressState;
   liveHistory.push({question:old.text,category:old.category,answer});currentLiveQuestion=null;
-  try{await fetchNext();}catch(e){$('liveError').textContent=`Your answer was saved. ${e.message}`;$('liveNext').classList.add('hidden');$('retryNext').classList.remove('hidden');}
+  try{await fetchNext();}catch(e){show('liveInterview');$('liveError').textContent=`Your answer was saved. ${e.message}`;$('liveNext').classList.add('hidden');$('retryNext').classList.remove('hidden');}
  }catch(e){$('liveError').textContent=`${e.message} Your answer is still on this screen; please retry.`;}
  finally{setLiveBusy(false);}
 }
@@ -331,14 +340,14 @@ async function resumeLive(){
   const state=await apiCall('resume');
   if(updateFromServer(state))return;
   await fetchNext();
- }catch(e){$('resumeError').textContent=e.message;}
+ }catch(e){show('welcome');$('resumeError').textContent=e.message;}
  finally{setLiveBusy(false);}
 }
 async function retryNext(){
  if(liveBusy)return;
  setLiveBusy(true);$('liveError').textContent='';
  try{await fetchNext();}
- catch(e){$('liveError').textContent=e.message;$('retryNext').classList.remove('hidden');$('liveNext').classList.add('hidden');}
+ catch(e){show('liveInterview');$('liveError').textContent=e.message;$('retryNext').classList.remove('hidden');$('liveNext').classList.add('hidden');}
  finally{setLiveBusy(false);}
 }
 async function deleteMySession(){

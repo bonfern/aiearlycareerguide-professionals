@@ -112,7 +112,7 @@ export function instruction(profile,history,blueprint,target){
  }
  const previous=history.filter(h=>h.competencyId===target.id).map(h=>({question:h.question,answer:h.answer,correct:h.correct,kind:h.questionType,subskill:h.subskill}));
  return [...base,
-  `EXISTING SKILL MAP: ${JSON.stringify(blueprint)}. Return competencies=[] because the map already exists.`,
+  'A validated skill map already exists on the server. Return competencies=[]; you must NOT change the map or assess other skills.',
   `ASSESS THIS EXACT SKILL: ${JSON.stringify(target)}. Requested kind: ${nextQuestionType(target,history)}. Requested difficulty: ${nextDifficulty(target,history)}.`,
   `PREVIOUS ANSWERS FOR THIS SKILL: ${JSON.stringify(previous)}. Choose a different subskill or realistic application of the same subskill.`,
   'When previous responses were mixed, ask one further discriminating scenario, not a repeated question. Never stop or change competencies yourself.',
