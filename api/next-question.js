@@ -15,8 +15,12 @@ export default async function handler(req,res){
    if(s.currentQuestion)return {kind:'existing',state:safeState(s)};
    const gradedHistory=scoredHistory(s.history||[]);
    const completion=competencyProgress(s.blueprint||[],gradedHistory);
-   if(s.status==='complete'&&(s.report||completion.total>0&&completion.assessed===completion.total))
-    return {kind:'done',answered:gradedHistory.length,progress:publicProgress(s),completionMode:s.completionMode||'full'};
+   // Never trust a legacy "complete" flag by itself. Finished results from
+   // older versions can still be reopened when a saved report really exists.
+   const finished=completion.total>=4&&completion.assessed===completion.total&&
+     gradedHistory.filter(h=>typeof h.correct==='boolean').length>=completion.total*3;
+   if(s.status==='complete'&&(s.report||finished))
+    return {kind:'done',hasReport:Boolean(s.report),answered:gradedHistory.length,progress:publicProgress(s),completionMode:s.completionMode||'full'};
    // Older incomplete sessions may have been marked complete by the retired early-exit path.
    if(s.status==='complete'&&!s.report)tx.update(ref,{status:'active',completionMode:null,updatedAt:new Date()});
    const target=s.blueprint?.length?nextCompetency(s.blueprint,gradedHistory):null;
@@ -47,7 +51,7 @@ export default async function handler(req,res){
    return {kind:'generate',profile:s.profile,history:gradedHistory,blueprint:s.blueprint||null,target};
   });
   if(result.kind==='existing')return output(res,200,{done:false,...result.state});
-  if(result.kind==='done')return output(res,200,{done:true,status:'complete',answered:result.answered,progress:result.progress,completionMode:result.completionMode});
+  if(result.kind==='done')return output(res,200,{done:true,status:'complete',hasReport:result.hasReport,answered:result.answered,progress:result.progress,completionMode:result.completionMode});
   if(result.kind==='prepared')return output(res,200,{done:false,...result});
   // Brand-new V7 sessions: create and validate the *entire* short assessment
   // in one call. Existing V6 sessions can still use their original flow.

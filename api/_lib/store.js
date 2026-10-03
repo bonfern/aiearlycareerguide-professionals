@@ -79,5 +79,5 @@ export function safeState(session){
  return {status:session.status,profile:session.profile,answered:session.history?.length||0,
   history:(session.history||[]).map(({question,category,answer,competencyId,subskill,questionType})=>({question,category,answer,competencyId,subskill,questionType})),
   question:publicQuestion(session.currentQuestion),progress:publicProgress(session),
-  paid:Boolean(session.paid),completionMode:session.completionMode||'full',accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null};
+  paid:Boolean(session.paid),hasReport:Boolean(session.report),completionMode:session.completionMode||'full',accessExpiresAt:session.accessExpiresAt?.toDate?.()?.toISOString?.()||null};
 }

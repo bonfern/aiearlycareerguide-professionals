@@ -362,15 +362,28 @@ function updateFromServer(result){
  liveHistory.length=0;for(const entry of(result.history||[]))liveHistory.push({...entry});
  if(result.profile)savedServerProfile=result.profile;
  currentLiveQuestion=result.question||null;liveProgressState=result.progress||liveProgressState;
- if(result.status==='complete'&&!(liveProgressState?.total>0&&liveProgressState.assessed<liveProgressState.total)){showCompletion('full',liveProgressState);return true;}
+ // A completed flag alone is NOT proof that the current purchaser completed
+ // the assessment. Existing reports remain accessible as historical results.
+ if(result.status==='complete'&&(completedAllSkills(liveProgressState)||result.hasReport)){
+  showCompletion('full',liveProgressState);return true;
+ }
  if(currentLiveQuestion){renderLive();show('liveInterview');return true;}
  return false;
+}
+function completedAllSkills(progress){
+ return Number.isInteger(progress?.total)&&progress.total>=4&&
+   progress.assessed===progress.total&&progress.answered>=progress.total*3;
 }
 async function fetchNext(){
  $('retryNext').classList.add('hidden');$('liveNext').classList.remove('hidden');
  showQuestionWait(!liveProgressState.total && !liveHistory.length);
  const state=await apiCall('next-question');
- if(state.done){currentLiveQuestion=null;liveProgressState=state.progress||liveProgressState;showCompletion(state.completionMode||'full',liveProgressState);return;}
+ if(state.done){
+  liveProgressState=state.progress||liveProgressState;
+  if(!completedAllSkills(liveProgressState)&&!state.hasReport)
+   throw Error('Your assessment is not complete yet. Please retry loading the interview.');
+  currentLiveQuestion=null;showCompletion(state.completionMode||'full',liveProgressState);return;
+ }
  currentLiveQuestion=state.question;liveProgressState=state.progress||liveProgressState;renderLive();show('liveInterview');
 }
 async function beginLive(){
@@ -639,6 +652,18 @@ async function applyCoupon(){
 function recordPending(order){pendingCheckouts[order.email]=order;savePendingCheckouts();syncCheckout();}
 function showConfirmationNotice(){ /* Confirmation is emailed; keep the assessment page focused on questions. */ }
 function completePayment(order,status='pending'){
+ // A different purchase (especially another person's email on a shared
+ // browser) must NEVER inherit an old session, history or completed status.
+ if(liveSession && (liveSession.orderId!==order.orderId ||
+     String(liveSession.email||'').toLowerCase()!==String(order.email||'').toLowerCase())){
+  archiveCurrentSession();storeSession(null);
+ }
+ currentLiveQuestion=null;liveHistory.length=0;
+ liveProgressState={assessed:0,total:0};savedServerProfile=null;
+ currentCareerReport=null;currentReportDate=null;
+ for(const key of Object.keys(data))delete data[key];
+ for(const key of Object.keys(interviewAnswers))delete interviewAnswers[key];
+ step=0;interviewStep=0;fromReview=false;
  rememberPurchase(order);
  clearPendingOrder(order);
  privatePreview=false;setCheckoutBusy(false);showConfirmationNotice(status);show('profile');render();
@@ -694,6 +719,14 @@ async function continueExisting(){
   try{
    if(!emailGateState.sessionId&&purchase){
     // Payment completed, but the professional profile was not started.
+    // A completed session from an earlier email must not skip this new
+    // purchase's interview when the person reaches the profile screen.
+    if(liveSession&&(liveSession.orderId!==purchase.orderId||
+      String(liveSession.email||'').toLowerCase()!==enteredEmail())){
+     archiveCurrentSession();storeSession(null);
+     liveHistory.length=0;currentLiveQuestion=null;
+     liveProgressState={assessed:0,total:0};
+    }
     rememberPurchase(purchase);recoverBusy=false;$('continueExistingBtn').disabled=false;show('profile');render();return;
    }
    if(saved&&saved.sessionId===emailGateState.sessionId){
@@ -774,7 +807,19 @@ async function beginPaidLive(){
  if(!paidPurchase)return;
  setLiveBusy(true);$('liveSetupError').textContent='';showQuestionWait(true);
  try{
-  if(!liveSession){const profile=profileForAPI();const session=await apiCall('start',{paidOrder:{orderId:paidPurchase.orderId,checkoutNonce:paidPurchase.checkoutNonce},profile},true);savedServerProfile=profile;storeSession({...session,email:paidPurchase.email,orderId:paidPurchase.orderId});}
+  // Do not send /next-question using a session belonging to another order.
+  if(liveSession && (!liveSession.paid || liveSession.orderId!==paidPurchase.orderId ||
+      String(liveSession.email||'').toLowerCase()!==String(paidPurchase.email||'').toLowerCase())){
+   archiveCurrentSession();storeSession(null);
+   liveHistory.length=0;currentLiveQuestion=null;liveProgressState={assessed:0,total:0};
+  }
+  if(!liveSession){
+   const profile=profileForAPI();
+   const session=await apiCall('start',{paidOrder:{orderId:paidPurchase.orderId,checkoutNonce:paidPurchase.checkoutNonce},profile},true);
+   if(session.reused&&session.status==='complete')
+    throw Error('This purchase already has a completed assessment. Please reopen the previous report or start a new purchase.');
+   savedServerProfile=profile;storeSession({...session,email:paidPurchase.email,orderId:paidPurchase.orderId});
+  }
   await fetchNext();
  }catch(e){show('review');$('resumeError').textContent=e.message;alert('Could not start your assessment. Your verified purchase is saved in this browser. Please retry.');}
  finally{setLiveBusy(false);}
