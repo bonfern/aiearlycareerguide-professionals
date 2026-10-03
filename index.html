@@ -83,7 +83,7 @@ body{background:#fff}p{color:#526078}main{max-width:1200px;margin:0 auto;padding
  <div class="checkout-step-title">3. Complete checkout</div>
  <div id="checkoutError" class="error" aria-live="polite"></div><p class="hint" id="checkoutStatus" aria-live="polite"></p>
  <div class="checkout-actions"><button id="checkoutBack" type="button" class="btn secondary">← Back</button><button type="button" id="payBtn" class="btn" disabled>Pay ₹499 &amp; Start Assessment →</button><button type="button" id="recoverPaymentBtn" class="btn secondary hidden">Check Previous Payment</button></div>
- <p class="hint">If your bank account was debited, never pay again before checking the previous payment. We email the assessment link once payment is confirmed.</p>
+ <p class="hint" id="checkoutRecoveryHint">For paid checkouts, if your bank account was debited, check the earlier payment before trying again. Your assessment link will be emailed after confirmation.</p>
 </section>
 <section id="profile" class="panel hidden"><div id="accessEmailNotice" class="notice hidden" role="status"></div><div class="eyebrow">Professional profile</div><div class="row"><h2 id="stepTitle"></h2><span id="sectionLabel" class="tag"></span></div><div class="progress" role="progressbar" aria-label="Profile completion" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="progress"><span id="bar"></span></div><form id="profileForm"><label id="question" for="answer"></label><p id="hint" class="hint"></p><div id="field"></div><div id="error" class="error" aria-live="polite"></div><div class="footeractions"><button type="button" class="btn secondary" id="backBtn">← Back</button><button type="submit" class="btn" id="nextBtn">Continue →</button></div></form></section>
 <section id="review" class="panel hidden"><div class="eyebrow">Profile review</div><h2>Your professional profile</h2><p>Review your answers. Select <strong>Edit</strong> beside any item to change it without starting again.</p><div id="answers"></div><button class="btn secondary" id="reviewBack">← Back to profile</button><button class="btn secondary hidden" id="interviewBtn">Legacy offline preview →</button><button class="btn" id="liveStartBtn">Start live AI interview →</button></section>
@@ -246,7 +246,8 @@ $('startBtn').addEventListener('click',()=>{if(liveSession){show('welcome');resu
 const SESSION_KEY='careerProfessionalsBetaV1';
 const PREVIOUS_KEY='careerProfessionalsBetaPreviousV1';
 const PURCHASE_KEY='careerProfessionalsPaidCheckoutV1', PENDING_KEY='careerProfessionalsPendingCheckoutV1';
-let paidPurchase=null,pendingCheckout=null,privatePreview=false,checkoutBusy=false;
+const PENDING_MAP_KEY='careerProfessionalsPendingByEmailV2';
+let paidPurchase=null,pendingCheckouts={},privatePreview=false,checkoutBusy=false;
 const liveHistory=[];
 let liveSession=null,currentLiveQuestion=null,liveBusy=false,savedServerProfile=null,liveCompletionMode='full';
 let liveProgressState={assessed:0,total:0};
@@ -547,12 +548,12 @@ function rupees(paise){return '₹'+(Number(paise)/100).toLocaleString('en-IN',{
 let lastQuote={amount:49900,discount:0,couponCode:null},appliedCouponCode='',recoverBusy=false;
 const enteredEmail=()=>String($('checkoutEmail').value||'').trim().toLowerCase();
 const validCheckoutEmail=()=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(enteredEmail());
+function pendingForEmail(email=enteredEmail()){const p=pendingCheckouts[email];return p?.email===email&&p?.orderId&&p?.checkoutNonce?p:null;}
+function savePendingCheckouts(){localStorage.setItem(PENDING_MAP_KEY,JSON.stringify(pendingCheckouts));localStorage.removeItem(PENDING_KEY);}
+function clearPendingOrder(order){if(order?.email&&pendingCheckouts[order.email]?.orderId===order.orderId){delete pendingCheckouts[order.email];savePendingCheckouts();}}
 function sameBrowserPurchase(){return paidPurchase&&paidPurchase.email===enteredEmail();}
 function setCheckoutBusy(b){
  checkoutBusy=b;syncCheckout();
- if(b)$('payBtn').textContent='Processing securely…';
- else if(pendingCheckout)$('payBtn').textContent='Reopen checkout →';
- else $('payBtn').textContent=lastQuote.amount===0?'Confirm Complimentary Access →':`Pay ${rupees(lastQuote.amount)} & Start Assessment →`;
 }
 function setQuote(quote){
  lastQuote=quote;appliedCouponCode=quote.couponCode||'';
@@ -564,11 +565,16 @@ function setQuote(quote){
 function syncCheckout(){
  const consent=$('checkoutConsent').checked,validEmail=validCheckoutEmail();
  const typed=$('couponCode').value.trim().toUpperCase();
- const unapplied=typed!==appliedCouponCode;
+ const unapplied=typed!==appliedCouponCode,pending=validEmail?pendingForEmail():null;
  $('continueExistingBtn').classList.toggle('hidden',!sameBrowserPurchase());
+ $('checkoutEmail').disabled=checkoutBusy;
+ $('couponCode').disabled=checkoutBusy;
+ $('checkoutConsent').disabled=checkoutBusy;
  $('applyCoupon').disabled=checkoutBusy||!consent||!validEmail||!typed;
  $('payBtn').disabled=checkoutBusy||!consent||!validEmail||(typed.length>0&&unapplied);
- if(!checkoutBusy&&!pendingCheckout)$('payBtn').textContent=lastQuote.amount===0?'Confirm Complimentary Access →':`Pay ${rupees(lastQuote.amount)} & Start Assessment →`;
+ $('recoverPaymentBtn').classList.toggle('hidden',!pending||pending.amount===0);
+ $('checkoutRecoveryHint').classList.toggle('hidden',lastQuote.amount===0&&!pending);
+ $('payBtn').textContent=checkoutBusy?'Processing securely…':pending?.amount>0?`Resume Earlier ${rupees(pending.amount)} Checkout →`:lastQuote.amount===0?'Confirm Free Access & Start Assessment →':`Pay ${rupees(lastQuote.amount)} & Start Assessment →`;
 }
 async function checkoutRequest(route,body){
  const res=await fetch(`${apiPrefix}/${route}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body),cache:'no-store'});
@@ -585,11 +591,11 @@ async function applyCoupon(){
   const code=$('couponCode').value.trim();
   const quote=await checkoutRequest('create-order?mode=quote',{email:enteredEmail(),couponCode:code,consent:true});
   setQuote(quote);
-  $('checkoutStatus').textContent=quote.amount===0?'Coupon applied. Your amount is ₹0. Next, confirm complimentary access.':`Coupon applied. Next, make your payment of ${rupees(quote.amount)}.`;
+  $('checkoutStatus').textContent=quote.amount===0?'100% coupon applied. No payment is required. Select Confirm Free Access & Start Assessment.':`Coupon applied. Select Pay ${rupees(quote.amount)} & Start Assessment.`;
   $('payBtn').focus();
- }catch(e){$('checkoutError').textContent=e.message;resetQuote();}finally{setCheckoutBusy(false);}
+ }catch(e){$('checkoutError').textContent=e.message;$('checkoutStatus').textContent='';resetQuote();}finally{setCheckoutBusy(false);}
 }
-function recordPending(order){pendingCheckout=order;localStorage.setItem(PENDING_KEY,JSON.stringify(order));$('recoverPaymentBtn').classList.remove('hidden');}
+function recordPending(order){pendingCheckouts[order.email]=order;savePendingCheckouts();syncCheckout();}
 function showConfirmationNotice(status){
  const node=$('accessEmailNotice');
  node.classList.remove('hidden');
@@ -599,7 +605,7 @@ function showConfirmationNotice(status){
 function completePayment(order,status='pending'){
  paidPurchase={orderId:order.orderId,checkoutNonce:order.checkoutNonce,email:order.email};
  localStorage.setItem(PURCHASE_KEY,JSON.stringify(paidPurchase));
- pendingCheckout=null;localStorage.removeItem(PENDING_KEY);$('recoverPaymentBtn').classList.add('hidden');
+ clearPendingOrder(order);
  privatePreview=false;setCheckoutBusy(false);showConfirmationNotice(status);show('profile');render();
 }
 async function verifyPayment(order,payment={}){
@@ -608,9 +614,9 @@ async function verifyPayment(order,payment={}){
  completePayment(order,result.emailStatus);return true;
 }
 async function recoverPayment(){
- if(!pendingCheckout)return;
+ const pending=pendingForEmail();if(!pending)return;
  setCheckoutBusy(true);$('checkoutError').textContent='';$('checkoutStatus').textContent='Checking your previous payment securely…';
- try{await verifyPayment(pendingCheckout);}catch(e){$('checkoutError').textContent=e.message;}finally{setCheckoutBusy(false);}
+ try{await verifyPayment(pending);}catch(e){$('checkoutError').textContent=e.message;}finally{setCheckoutBusy(false);}
 }
 async function requestAccessLink(){
  if(recoverBusy)return;
@@ -641,25 +647,33 @@ async function openRazorpayOrder(order){
    finally{setCheckoutBusy(false);}
   },modal:{ondismiss:()=>{
    $('checkoutStatus').textContent=paymentFailed?'Payment was not confirmed. Check the earlier payment before retrying.':'Checkout closed. If you paid, check the previous payment before creating another order.';
-   $('recoverPaymentBtn').classList.remove('hidden');setCheckoutBusy(false);
+   setCheckoutBusy(false);
   }},theme:{color:'#6847e8'}});
  modal.on('payment.failed',response=>{
   paymentFailed=true;$('checkoutError').textContent=(response?.error?.description||'Payment could not be confirmed')+'. If money was debited, do not pay again. Check Previous Payment.';
-  $('recoverPaymentBtn').classList.remove('hidden');setCheckoutBusy(false);
+  setCheckoutBusy(false);
  });modal.open();
 }
 async function payAndContinue(){
  if(checkoutBusy)return;
- if(sameBrowserPurchase()){await continueExisting();return;}
- if(pendingCheckout){setCheckoutBusy(true);try{await openRazorpayOrder(pendingCheckout);}catch(e){$('checkoutError').textContent=e.message;setCheckoutBusy(false);}return;}
  if(!validCheckoutEmail()){$('checkoutError').textContent='Enter a valid email address.';$('checkoutEmail').focus();return;}
  if(!$('checkoutConsent').checked){$('checkoutError').textContent='Accept the Terms and Privacy Policy before continuing.';$('checkoutConsent').focus();return;}
+ if(sameBrowserPurchase()){await continueExisting();return;}
  const typed=$('couponCode').value.trim().toUpperCase();
  if(typed!==appliedCouponCode){$('checkoutError').textContent='Please apply your coupon before continuing.';return;}
- setCheckoutBusy(true);$('checkoutError').textContent='';$('checkoutStatus').textContent='Creating your secure checkout…';
+ const pending=pendingForEmail();
+ if(pending){
+  if(pending.amount===0){setCheckoutBusy(true);try{await verifyPayment(pending);}catch(e){$('checkoutError').textContent=e.message;}finally{setCheckoutBusy(false);}return;}
+  if(lastQuote.amount!==pending.amount || appliedCouponCode!==(pending.couponCode||'')){
+   $('checkoutError').textContent='An earlier checkout exists for this email. Please check that payment before trying a new coupon or checkout.';
+   syncCheckout();return;
+  }
+  setCheckoutBusy(true);try{await openRazorpayOrder(pending);}catch(e){$('checkoutError').textContent=e.message;setCheckoutBusy(false);}return;
+ }
+ setCheckoutBusy(true);$('checkoutError').textContent='';$('checkoutStatus').textContent=lastQuote.amount===0?'Confirming your free assessment access…':'Creating your secure checkout…';
  try{
   const order=await checkoutRequest('create-order',{email:enteredEmail(),couponCode:typed,consent:true});
-  if(!order.requiresPayment){await verifyPayment(order);return;}
+  if(!order.requiresPayment){const confirmed=await verifyPayment(order);if(!confirmed)setCheckoutBusy(false);return;}
   recordPending(order);await openRazorpayOrder(order);
  }catch(e){$('checkoutError').textContent=e.message;setCheckoutBusy(false);}
 }
@@ -679,8 +693,8 @@ function showReportEmailStatus(status){
  else{node.textContent=status==='sending'?'Your report email is being processed.':'Your report is ready but the email is not confirmed. Retry below.';retry.classList.remove('hidden');}
 }
 $('emailRetryBtn').addEventListener('click',async()=>{const btn=$('emailRetryBtn');btn.disabled=true;try{const result=await apiCall('send-report');showReportEmailStatus(result.status);}catch(e){$('emailStatusNote').textContent=e.message;}finally{btn.disabled=false;}});
-$('checkoutEmail').addEventListener('input',()=>{resetQuote();syncCheckout();$('checkoutError').textContent='';});
-$('couponCode').addEventListener('input',()=>{resetQuote();syncCheckout();});
+$('checkoutEmail').addEventListener('input',()=>{resetQuote();$('checkoutError').textContent='';const pending=pendingForEmail();$('checkoutStatus').textContent=pending?(pending.amount===0?'An earlier complimentary checkout was found. Confirm access to continue.':'An earlier checkout was found for this email. Check its payment status before paying again.'):'';syncCheckout();});
+$('couponCode').addEventListener('input',()=>{resetQuote();$('checkoutStatus').textContent='';$('checkoutError').textContent='';syncCheckout();});
 $('checkoutConsent').addEventListener('change',()=>{syncCheckout();$('checkoutError').textContent='';});
 $('applyCoupon').addEventListener('click',applyCoupon);
 $('payBtn').addEventListener('click',payAndContinue);
@@ -689,7 +703,9 @@ $('requestAccessLinkBtn').addEventListener('click',requestAccessLink);
 $('recoverPaymentBtn').addEventListener('click',recoverPayment);
 $('checkoutBack').addEventListener('click',()=>show('welcome'));
 try{const p=JSON.parse(localStorage.getItem(PURCHASE_KEY)||'null');if(p?.orderId&&p?.checkoutNonce&&p?.email)paidPurchase=p;}catch{localStorage.removeItem(PURCHASE_KEY);}
-try{const p=JSON.parse(localStorage.getItem(PENDING_KEY)||'null');if(p?.orderId&&p?.checkoutNonce){pendingCheckout=p;$('recoverPaymentBtn').classList.remove('hidden');$('checkoutEmail').value=p.email||'';$('checkoutStatus').textContent='An earlier checkout was found. Check payment before creating a new order.';}}catch{localStorage.removeItem(PENDING_KEY);}
+try{const saved=JSON.parse(localStorage.getItem(PENDING_MAP_KEY)||'{}');if(saved&&typeof saved==='object'&&!Array.isArray(saved)){for(const [email,p] of Object.entries(saved))if(p?.orderId&&p?.checkoutNonce&&p?.email===email)pendingCheckouts[email]=p;}const old=JSON.parse(localStorage.getItem(PENDING_KEY)||'null');if(old?.orderId&&old?.checkoutNonce&&old?.email&&!pendingCheckouts[old.email])pendingCheckouts[old.email]=old;savePendingCheckouts();}catch{localStorage.removeItem(PENDING_KEY);localStorage.removeItem(PENDING_MAP_KEY);}
+// Older checkouts remain recoverable only when the matching email is entered.
+const savedEmails=Object.keys(pendingCheckouts);if(savedEmails.length===1&&!$('checkoutEmail').value){$('checkoutEmail').value=savedEmails[0];$('checkoutStatus').textContent='A previous checkout exists for this email. Check its status before trying again.';}
 try{const s=JSON.parse(sessionStorage.getItem(SESSION_KEY)||localStorage.getItem(SESSION_KEY)||'null');if(s?.sessionId&&s?.sessionToken){storeSession(s);assessmentMode='live';updateReportAvailability();}}catch{sessionStorage.removeItem(SESSION_KEY);}
 renderPreviousSessions();syncCheckout();
 
@@ -702,7 +718,7 @@ async function redeemEmailLinkIfPresent(){
   const result=await apiCall('start',{accessLink:token},true);
   paidPurchase={orderId:result.orderId,checkoutNonce:result.checkoutNonce,email:result.email};
   localStorage.setItem(PURCHASE_KEY,JSON.stringify(paidPurchase));
-  pendingCheckout=null;localStorage.removeItem(PENDING_KEY);privatePreview=false;
+  clearPendingOrder({orderId:result.orderId,email:result.email});privatePreview=false;
   if(result.sessionId&&result.sessionToken){
    storeSession({sessionId:result.sessionId,sessionToken:result.sessionToken,paid:true,
       accessExpiresAt:result.accessExpiresAt,email:result.email});
