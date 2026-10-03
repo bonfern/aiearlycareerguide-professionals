@@ -1,13 +1,50 @@
 import crypto from 'node:crypto';
 import {db,newSession,previewAuthorized,ApiError,output,handleError,postOnly,parseBody,sha,safeEqual} from './_lib/store.js';
 import {validatePayload} from './_lib/interview-logic.js';
-import {ORDERS,verifyCheckoutProof,checkoutToken,parseAccessLink,recoveredCheckoutProof} from './_lib/commerce.js';
+import {ORDERS,verifyCheckoutProof,checkoutToken,parseAccessLink,recoveredCheckoutProof,createAccessLink} from './_lib/commerce.js';
 export default async function handler(req,res){
  if(!postOnly(req,res))return;
  try{
   if(!process.env.OPENAI_API_KEY||!(process.env.FIREBASE_SERVICE_ACCOUNT_JSON||process.env.FIREBASE_SERVICE_ACCOUNT_BASE64))throw new ApiError(503,'The assessment service is not configured.');
   const raw=parseBody(req);
   const database=db();
+  // One-time cross-domain transfer: only a browser holding its original purchase
+  // proof or an unexpired session token can create a short-lived transfer link.
+  // Email alone is never sufficient. No new serverless function is required.
+  if(raw.transferToBranded){
+   const proof=raw.paidOrder||{},sessionProof=raw.sessionProof||{};
+   const orderId=typeof proof.orderId==='string'?proof.orderId:sessionProof.orderId;
+   if(typeof orderId!=='string'||!/^(order_[A-Za-z0-9]+|free_[a-f0-9]{32})$/.test(orderId))
+    throw new ApiError(401,'This browser has no purchase reference. Please use email recovery.');
+   const ref=database.collection(ORDERS).doc(orderId);
+   const link=await database.runTransaction(async tx=>{
+    const snapshot=await tx.get(ref);
+    if(!snapshot.exists||snapshot.data().status!=='paid')throw new ApiError(401,'Your purchase could not be verified.');
+    const order=snapshot.data();let allowed=false;
+    if(proof.orderId===orderId&&typeof proof.checkoutNonce==='string'){
+     try{verifyCheckoutProof(order,proof.checkoutNonce,orderId);allowed=true;}catch{}
+    }
+    if(!allowed&&order.sessionId&&sessionProof.orderId===orderId&&sessionProof.sessionId===order.sessionId&&
+      typeof sessionProof.sessionToken==='string'&&/^[a-f0-9]{64}$/.test(sessionProof.sessionToken)){
+      const ss=await tx.get(database.collection('professionalAssessments_v1').doc(order.sessionId));
+      if(ss.exists&&ss.data().paid===true&&ss.data().email===order.email&&
+         ss.data().accessExpiresAt?.toMillis?.()>Date.now()&&
+         ss.data().status!=='complete'&&sha(sessionProof.sessionToken)===ss.data().tokenHash)allowed=true;
+    }
+    if(!allowed)throw new ApiError(401,'This browser has no valid saved access. Use your assessment email link.');
+    if(order.sessionId){
+     const existing=await tx.get(database.collection('professionalAssessments_v1').doc(order.sessionId));
+     if(!existing.exists||existing.data().status==='complete'||existing.data().accessExpiresAt?.toMillis?.()<=Date.now())
+      throw new ApiError(410,'This assessment is no longer open. Contact support.');
+    }
+    const next=createAccessLink(orderId,Date.now()+5*60*1000);
+    tx.update(ref,{accessLinkHash:next.tokenHash,accessLinkExpiresAt:new Date(next.expiresAt),accessEmailSentAt:null,updatedAt:new Date()});
+    return next;
+   });
+   const target=new URL('https://www.aiearlycareerguide.com/professionals');
+   target.hash='access='+encodeURIComponent(link.token);
+   return output(res,200,{transferUrl:target.toString()});
+  }
   if(raw.accessLink){
    const link=parseAccessLink(raw.accessLink),orderRef=database.collection(ORDERS).doc(link.orderId);
    const granted=await database.runTransaction(async tx=>{

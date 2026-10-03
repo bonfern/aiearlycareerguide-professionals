@@ -76,7 +76,7 @@ body{background:#fff}p{color:#526078}main{max-width:1200px;margin:0 auto;padding
  <p>We found an unfinished assessment for <strong id="returningEmail"></strong>. You don't need to pay again.</p>
  <p id="resumeGateHint" class="hint"></p>
  <div id="recoveryStatus" class="hint" aria-live="polite"></div><div id="resumeGateError" class="error" role="alert" aria-live="polite"></div>
- <div class="checkout-actions"><button type="button" id="resumeGateBack" class="btn secondary">← Change Email</button><button type="button" id="continueExistingBtn" class="btn">Continue Assessment →</button></div>
+ <div class="checkout-actions"><button type="button" id="resumeGateBack" class="btn secondary">← Change Email</button><button type="button" id="continueExistingBtn" class="btn">Continue Assessment →</button><button type="button" id="legacyResumeBtn" class="btn secondary hidden">Continue from Original Website →</button></div>
 </section>
 <section id="checkout" class="panel checkout-panel hidden">
  <div class="eyebrow">Step 2 of 2 · Checkout</div><h2>Complete your assessment purchase</h2>
@@ -658,8 +658,12 @@ async function checkEmailAndRoute(){
   $('emailGateStatus').textContent='';$('checkoutEmailDisplay').textContent=email;
   if(result.unfinished){
    $('returningEmail').textContent=email;
-   $('resumeGateHint').textContent=result.sameDevice?'Your assessment is ready to continue.':
-    'For your privacy, we will email a secure continuation link when you select Continue Assessment.';
+   const canTransfer=location.hostname!=='aiearlycareerguide-professionals.vercel.app'&&!result.sameDevice;
+   $('resumeGateHint').textContent=result.sameDevice?'Your assessment is ready to continue here.':
+    canTransfer?'If you first started on our earlier Vercel address, transfer access from that browser. Otherwise use a secure email link.':
+    'This browser has no saved access. We can send a secure link to your assessment email.';
+   $('continueExistingBtn').textContent=result.sameDevice?'Continue Assessment →':'Email a Secure Link →';
+   $('legacyResumeBtn').classList.toggle('hidden',!canTransfer);
    $('resumeGateError').textContent='';$('recoveryStatus').textContent='';show('resumeGate');
   }else{
    // Never reuse consent or an earlier coupon for a different customer.
@@ -768,6 +772,13 @@ $('emailGateNext').addEventListener('click',checkEmailAndRoute);
 $('checkoutEmail').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();checkEmailAndRoute();}});
 $('emailGateBack').addEventListener('click',()=>show('welcome'));
 $('resumeGateBack').addEventListener('click',()=>show('emailGate'));
+$('legacyResumeBtn').addEventListener('click',()=>{
+ const email=enteredEmail();
+ if(!validCheckoutEmail())return;
+ // An explicit click opens the original origin so it can read its OWN saved
+ // checkout. The old origin exchanges that proof for a short-lived transfer link.
+ location.assign('https://aiearlycareerguide-professionals.vercel.app/#transfer='+encodeURIComponent(email));
+});
 $('changeCheckoutEmail').addEventListener('click',()=>show('emailGate'));
 $('couponCode').addEventListener('input',()=>{resetQuote();$('checkoutStatus').textContent='';$('checkoutError').textContent='';syncCheckout();});
 $('checkoutConsent').addEventListener('change',()=>{syncCheckout();$('checkoutError').textContent='';});
@@ -807,7 +818,34 @@ async function redeemEmailLinkIfPresent(){
   }else{storeSession(null);showConfirmationNotice('sent');show('profile');render();}
  }catch(e){show('emailGate');$('checkoutEmail').value='';emailGateState={email:null,unfinished:false,sameDevice:false,sessionId:null};$('emailGateError').textContent=e.message+' Enter your email to check for an unfinished assessment.';}
 }
-redeemEmailLinkIfPresent();
+// An explicit transfer request is processed on the former Vercel address.
+// Never assume access from the email in the URL: local purchase/session proof
+// must still be verified server-side before a transfer URL is issued.
+async function transferOriginalPurchaseIfRequested(){
+ const match=location.hash.match(/^#transfer=(.+)$/);if(!match)return false;
+ history.replaceState(null,'',location.pathname+location.search);
+ if(location.hostname!=='aiearlycareerguide-professionals.vercel.app')return false;
+ let email='';try{email=decodeURIComponent(match[1]).trim().toLowerCase();}catch{}
+ const purchase=purchaseForEmail(email),saved=savedSessionForEmail(email);
+ if(!purchase&&!saved){
+  show('emailGate');$('checkoutEmail').value=email;
+  $('emailGateError').textContent='This address has no saved access in this browser. Use your secure email link, or return to the browser you originally used.';
+  return true;
+ }
+ show('emailGate');$('emailGateStatus').textContent='Restoring access on your branded website…';
+ try{
+  const data=await checkoutRequest('start',{transferToBranded:true,
+   ...(purchase?{paidOrder:{orderId:purchase.orderId,checkoutNonce:purchase.checkoutNonce}}:{}),
+   ...(saved?{sessionProof:{orderId:saved.orderId,sessionId:saved.sessionId,sessionToken:saved.sessionToken}}:{})});
+  if(!data.transferUrl)throw Error('Unable to transfer access.');
+  location.replace(data.transferUrl);
+ }catch(e){
+  $('checkoutEmail').value=email;$('emailGateStatus').textContent='';
+  $('emailGateError').textContent=e.message+' Please use your secure assessment email link if this browser no longer has the original purchase.';
+ }
+ return true;
+}
+(async()=>{if(!(await transferOriginalPurchaseIfRequested()))await redeemEmailLinkIfPresent();})();
 </script>
 <script>
 (function(){

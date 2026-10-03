@@ -50,7 +50,11 @@ export default async function handler(req,res){
    });
    const pending=await findIncompleteOrder(database,email);
    // Same generic response whether or not an order exists: no customer enumeration.
-   if(pending)try{await sendAccessEmail(pending.ref,{resend:true});}catch(err){console.warn('Access-email request could not be delivered',err.message);}
+   if(pending){
+    try{await sendAccessEmail(pending.ref,{resend:true});}
+    catch(err){console.warn('Access-email request could not be delivered',err.message);
+     throw new ApiError(502,'We could not send your secure link. Please try again or contact support.');}
+   }
    return output(res,200,{message:'If an unfinished paid or complimentary assessment exists for this email, you will receive a private link shortly. Check Spam as well.'});
   }
   if(mode==='quote'){
