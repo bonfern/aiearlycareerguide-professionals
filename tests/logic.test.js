@@ -52,13 +52,49 @@ test('prepared questions require no subsequent OpenAI calls and never expose ans
  const store=readFileSync(new URL('../api/_lib/store.js',import.meta.url),'utf8');assert.match(store,/const \{answerKey,rationale,\.\.\.safe\}=question/);
  assert.match(readFileSync(new URL('../api/next-question.js',import.meta.url),'utf8'),/choosePreparedQuestion\(s\.blueprint,s\.questionBank/);
 });
-test('preparation makes one low-reasoning call to Terra with a full bank',async()=>{
- const previous=globalThis.fetch;const key=process.env.OPENAI_API_KEY;const configured=process.env.ASSESSMENT_MODEL;
- process.env.OPENAI_API_KEY='test-key';delete process.env.ASSESSMENT_MODEL;
- globalThis.fetch=async(_url,opts)=>{const payload=JSON.parse(opts.body);
-  assert.equal(payload.model,'gpt-5.6-terra');assert.equal(payload.reasoning.effort,'low');assert(payload.max_output_tokens>=12000);
-  return {ok:true,json:async()=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(raw)}]}]})};
+test('preparation splits the role map from small question batches and retries one bad batch',async()=>{
+ const previous=globalThis.fetch,key=process.env.OPENAI_API_KEY,model=process.env.ASSESSMENT_MODEL;
+ process.env.OPENAI_API_KEY='test-key';process.env.ASSESSMENT_MODEL='gpt-5.6-terra';
+ let mapCalls=0,batchCalls=0,batchRetries=0;
+ globalThis.fetch=async(_url,opts)=>{
+  const payload=JSON.parse(opts.body);
+  assert.equal(payload.model,'gpt-5.6-terra');assert.equal(payload.reasoning.effort,'low');
+  const body=JSON.parse(payload.input[1].content);
+  let result;
+  if(payload.text.format.name==='career_skill_map'){
+   mapCalls++;assert.equal(body.profile.careerObjective,'Promotion');assert(payload.max_output_tokens<=4000);
+   result={targetRole:raw.targetRole,competencies:skills,untestedSkills:extras};
+  }else{
+   assert.equal(payload.text.format.name,'career_question_batch');batchCalls++;
+   assert(body.skills.length<=2,'small batches limit the JSON size');
+   const ids=new Set(body.skills.map(s=>s.id));
+   result={questionBank:bank.filter(q=>ids.has(q.competencyId))};
+   if(ids.has('s1')&&batchRetries++===0)result={questionBank:result.questionBank.slice(1)};
+  }
+  return {ok:true,json:async()=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(result)}]}]})};
  };
- try{const plan=await generateAssessmentBank(profile);assert.equal(plan.questionBank.length,15);}
- finally{globalThis.fetch=previous;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;if(configured===undefined)delete process.env.ASSESSMENT_MODEL;else process.env.ASSESSMENT_MODEL=configured;}
+ try{
+  const plan=await generateAssessmentBank(profile);
+  assert.equal(plan.questionBank.length,15);assert.equal(mapCalls,1);
+  assert.equal(batchCalls,4,'3 parallel batches and one regenerated invalid batch');
+ }finally{
+  globalThis.fetch=previous;
+  if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;
+  if(model===undefined)delete process.env.ASSESSMENT_MODEL;else process.env.ASSESSMENT_MODEL=model;
+ }
+});
+
+test('an incomplete model response is internally regenerated',async()=>{
+ const previous=globalThis.fetch,key=process.env.OPENAI_API_KEY,model=process.env.ASSESSMENT_MODEL;
+ process.env.OPENAI_API_KEY='test-key';process.env.ASSESSMENT_MODEL='gpt-5.6-terra';
+ let calls=0;
+ globalThis.fetch=async(_url,opts)=>{
+  const payload=JSON.parse(opts.body);
+  if(payload.text.format.name==='career_skill_map'&&calls++===0)return {ok:true,json:async()=>({status:'incomplete',output:[]})};
+  const body=JSON.parse(payload.input[1].content);
+  const result=payload.text.format.name==='career_skill_map'?{targetRole:raw.targetRole,competencies:skills,untestedSkills:extras}: {questionBank:bank.filter(q=>body.skills.some(s=>s.id===q.competencyId))};
+  return {ok:true,json:async()=>({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(result)}]}]})};
+ };
+ try{const plan=await generateAssessmentBank(profile);assert.equal(plan.questionBank.length,15);assert(calls>=2);}
+ finally{globalThis.fetch=previous;if(key===undefined)delete process.env.OPENAI_API_KEY;else process.env.OPENAI_API_KEY=key;if(model===undefined)delete process.env.ASSESSMENT_MODEL;else process.env.ASSESSMENT_MODEL=model;}
 });

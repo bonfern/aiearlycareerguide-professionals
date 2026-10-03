@@ -3,6 +3,7 @@ import {db,authorize,ApiError,output,handleError,postOnly,MAX_AI_CALLS,safeState
 import {MAX_QUESTIONS,nextCompetency} from './_lib/interview-logic.js';
 import {generateQuestion,generateAssessmentBank} from './_lib/ai.js';
 import {choosePreparedQuestion} from './_lib/assessment-bank.js';
+import {getOrCreateAssessmentBank} from './_lib/question-cache.js';
 export default async function handler(req,res){
  if(!postOnly(req,res))return;
  let ref,leaseId;
@@ -43,7 +44,7 @@ export default async function handler(req,res){
   // Brand-new V7 sessions: create and validate the *entire* short assessment
   // in one call. Existing V6 sessions can still use their original flow.
   const fresh=!result.blueprint;
-  const generated=fresh?await generateAssessmentBank(result.profile):await generateQuestion(result.profile,result.history,result.blueprint,result.target);
+  const generated=fresh?(await getOrCreateAssessmentBank(db(),result.profile,generateAssessmentBank)).bank:await generateQuestion(result.profile,result.history,result.blueprint,result.target);
   const saved=await db().runTransaction(async tx=>{
    const snap=await tx.get(ref),s=snap.data();
    if(!s||s.generationLease?.id!==leaseId)throw new ApiError(409,'Generation was superseded. Refresh your interview.');
