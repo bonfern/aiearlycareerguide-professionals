@@ -58,21 +58,61 @@ export function signatureValid(orderId,paymentId,signature,secret=process.env.RA
  const computed=crypto.createHmac('sha256',secret).update(`${orderId}|${paymentId}`).digest('hex');
  return safeEqual(computed,signature);
 }
+// Shared email-safe layout: fluid tables and inline styles for Gmail, Outlook and mobile email apps.
+// The PNG logo is deliberately separate from the WebP used on the website and in the PDF.
+const EMAIL_HOME='https://www.aiearlycareerguide.com/professionals';
+const EMAIL_LOGO=EMAIL_HOME+'/brand-logo-email.png';
+const escEmail=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+function emailFrame({subject,eyebrow,body,footerNote=''}){
+ return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${escEmail(subject)}</title><style>
+ @media only screen and (max-width:620px){
+ .email-shell{width:100%!important;max-width:100%!important}
+ .email-pad{padding:20px 18px!important}
+ .email-title{font-size:23px!important;line-height:1.3!important}
+ .email-brand{width:150px!important;max-width:150px!important;height:auto!important}
+ .email-button{display:block!important;width:100%!important;box-sizing:border-box!important;text-align:center!important}
+ .email-text{font-size:15px!important;line-height:1.6!important}
+ }
+ </style></head><body style="margin:0;padding:0;width:100%;background:#f5f4fc;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;font-family:Arial,Helvetica,sans-serif;color:#17213d">
+ <div style="display:none;font-size:1px;line-height:1px;color:#f5f4fc;max-height:0;max-width:0;opacity:0;overflow:hidden">${escEmail(eyebrow)}</div>
+ <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="width:100%;border-collapse:collapse;background:#f5f4fc"><tr><td align="center" style="padding:18px 8px">
+ <table class="email-shell" role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="width:100%;max-width:600px;border-collapse:collapse;background:#ffffff;border:1px solid #e8e4f4">
+ <tr><td class="email-pad" style="padding:22px 26px;background:#f1edff;border-bottom:4px solid #6944e8">
+ <a href="${EMAIL_HOME}" style="text-decoration:none;color:#17213d"><img class="email-brand" src="${EMAIL_LOGO}" width="170" alt="AI Early Career Guide" style="display:block;max-width:170px;width:170px;height:auto;border:0;outline:none;text-decoration:none;background:#ffffff"></a>
+ <div style="font-size:19px;line-height:1.3;font-weight:bold;color:#17213d;padding-top:12px">Career Guide for <span style="color:#5938d4">Professionals</span></div>
+ <div style="font-size:12px;line-height:1.5;color:#59647c;padding-top:3px">by AI Early Career Guide</div></td></tr>
+ <tr><td class="email-pad email-text" style="padding:24px 26px;font-size:15px;line-height:1.6;word-wrap:break-word;overflow-wrap:break-word">${body}</td></tr>
+ <tr><td class="email-pad" style="padding:18px 26px;background:#17213d;color:#f2efff;font-size:12px;line-height:1.6;word-wrap:break-word"><strong style="font-size:13px">Career Guide for Professionals</strong><br><a href="${EMAIL_HOME}" style="color:#d8ccff;text-decoration:underline">aiearlycareerguide.com/professionals</a>${footerNote?`<div style="padding-top:10px;color:#e7dfff">${footerNote}</div>`:''}</td></tr>
+ </table></td></tr></table></body></html>`;
+}
+const emailP=(label,value)=>`<p style="margin:0 0 10px;font-size:15px;line-height:1.6"><strong>${escEmail(label)}:</strong> ${escEmail(value)}</p>`;
+const emailSection=content=>`<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:14px 0"><tr><td style="padding:15px 14px;border:1px solid #e9e5f5;background:#fcfbff;word-wrap:break-word;overflow-wrap:break-word">${content}</td></tr></table>`;
 export function receiptHtml(report){
- const e=x=>String(x??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+ const e=escEmail;
  const priority=s=>({'High development priority':'Start here','Development priority':'Work on this','Maintain and stretch':'Build on this strength','More assessment needed':'More practice needed'}[s]||s||'Review');
- const list=arr=>`<ul style="margin:8px 0 14px;padding-left:22px">${(arr||[]).map(x=>`<li style="margin-bottom:8px">${e(x)}</li>`).join('')}</ul>`;
+ const h2=txt=>`<h2 style="font-size:19px;line-height:1.35;color:#17213d;margin:25px 0 12px">${e(txt)}</h2>`;
+ const h3=txt=>`<h3 style="font-size:16px;line-height:1.4;color:#17213d;margin:0 0 10px">${e(txt)}</h3>`;
+ const list=arr=>`<ul style="margin:8px 0 14px;padding:0 0 0 20px">${(arr||[]).map(x=>`<li style="padding:0 0 8px 0;margin:0;line-height:1.6">${e(x)}</li>`).join('')}</ul>`;
  const learn=(learning={})=>{
-  const group=(title,items)=>items?.length?`<h4 style="color:#5d3de0;margin:16px 0 7px">${title}</h4><ul style="padding-left:22px">${items.map(r=>`<li style="margin:0 0 9px"><a href="${e(r.url)}" style="color:#5d3de0;text-decoration:underline">${e(r.name)}</a> — ${e(r.provider)}${r.description?'. '+e(r.description):''}${r.time?' ('+e(r.time)+')':''}</li>`).join('')}</ul>`:'';
-  return group('Free learning',learning.free)+group('Paid courses — check current fees',learning.paid)+group('Optional certifications',learning.certifications)+(learning.freeGap?`<p style="color:#58657e">${e(learning.freeGap)}</p>`:'');
+  const group=(title,items)=>items?.length?`<h4 style="font-size:15px;line-height:1.4;color:#5938d4;margin:16px 0 6px">${e(title)}</h4><ul style="margin:0;padding:0 0 0 20px">${items.map(r=>{const url=String(r.url||'');const href=/^https:\/\/[^\s"<>]+$/i.test(url)?` href="${e(url)}"`:'',name=e(r.name);return `<li style="margin:0 0 10px;line-height:1.6;overflow-wrap:break-word">${href?`<a${href} style="color:#5938d4;text-decoration:underline;overflow-wrap:anywhere">${name}</a>`:name} — ${e(r.provider)}${r.description?'. '+e(r.description):''}${r.time?' ('+e(r.time)+')':''}</li>`;}).join('')}</ul>`:'';
+  return group('Free learning',learning.free)+group('Paid courses — check current fees',learning.paid)+group('Optional certifications',learning.certifications)+(learning.freeGap?`<p style="color:#59647c">${e(learning.freeGap)}</p>`:'');
  };
- const table=(report.skillAssessments||[]).map(s=>`<tr><td style="border-bottom:1px solid #e8e5f5;padding:12px 9px">${e(s.name)}</td><td style="border-bottom:1px solid #e8e5f5;padding:12px 9px">${e(s.currentCompetency)}</td><td style="border-bottom:1px solid #e8e5f5;padding:12px 9px">${e(priority(s.priority))}</td></tr>`).join('');
- const skills=(report.skillAssessments||[]).map(s=>`<section style="page-break-inside:avoid;border:1px solid #ebe7ff;border-radius:12px;padding:16px;margin:18px 0"><h3 style="color:#17213d;margin:0 0 12px">${e(s.name)}</h3><p><b>What your next role needs:</b> ${e(s.targetBenchmark)}</p><p><b>Your assessment result:</b> ${e(s.currentCompetency)}</p><p><b>What to improve:</b> ${e(s.gap)}</p>${s.subskillsNeedingWork?.length?`<p><b>Topics to practise:</b> ${e(s.subskillsNeedingWork.join(', '))}</p>`:''}${s.subskillsNotTested?.length?`<p style="color:#58657e"><b>Not covered by this assessment:</b> ${e(s.subskillsNotTested.join(', '))}</p>`:''}<h4 style="color:#5d3de0;margin-bottom:6px">Your next steps</h4>${list(s.actions)}<p><b>Practical task:</b> ${e(s.practiceTask)}</p><p><b>How to check progress:</b> ${e(s.successIndicator)}</p>${learn(s.learning)}</section>`).join('');
- const extras=(report.additionalSkills||[]).map(s=>`<section style="padding:12px 0;border-top:1px solid #ebe7ff"><h3>${e(s.name)} — Not tested</h3><p><b>What is expected:</b> ${e(s.expectation)}</p><p><b>How to develop it:</b> ${e(s.nextStep)}</p><p><b>How to check progress:</b> ${e(s.howToVerify)}</p>${learn(s.learning)}</section>`).join('');
- const plan=(report.actionPlan||[]).map(s=>`<section style="background:#f7f5ff;border-radius:10px;padding:12px 18px;margin:12px 0"><h3 style="color:#5535d4;margin:4px 0">${e(s.period)} — ${e(s.focus)}</h3>${list(s.actions)}</section>`).join('');
- const logo='https://www.aiearlycareerguide.com/professionals/brand-logo.webp';
- const header=`<header style="background:#f4f0ff;padding:20px 24px;border-bottom:4px solid #6847e8"><img src="${logo}" alt="AI Early Career Guide" width="185" style="max-width:185px;height:auto;background:#fff;border-radius:5px;padding:5px"><div style="font-size:20px;font-weight:800;color:#17213d;margin-top:9px">Career Guide for <span style="color:#6847e8">Professionals</span></div><div style="color:#59647c;font-size:13px">by AI Early Career Guide</div></header>`;
- return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;background:#f5f5fc;font:15px/1.6 Arial,sans-serif;color:#17213d"><div style="max-width:760px;margin:0 auto;background:#fff">${header}<main style="padding:26px"><h1 style="font-size:24px;line-height:1.3;margin:0 0 12px;color:#17213d">Your Career Competency &amp; Development Report</h1><p><b>Your goal:</b> ${e(report.targetRole||'Your next career move')}</p><p>${e(report.summary)}</p><p style="background:#f1edff;border-left:4px solid #6847e8;padding:12px 15px"><b>${e(report.coverage?.assessed??'?')} of ${e(report.coverage?.total??'?')}</b> essential skills assessed</p><h2>1. Your essential skills at a glance</h2><table style="border-collapse:collapse;width:100%;font-size:14px"><thead><tr style="background:#ede8ff"><th align="left" style="padding:11px">Skill</th><th align="left" style="padding:11px">Your result</th><th align="left" style="padding:11px">Next step</th></tr></thead><tbody>${table}</tbody></table>${report.priorities?.length?`<h2>Where to focus first</h2>${list(report.priorities.map(s=>s.name+': '+s.firstAction))}`:''}<h2>2. Your skill-by-skill development plan</h2>${skills||'<p>Not enough information to assess these skills yet.</p>'}<h2>3. Other skills your goal may require</h2>${extras||'<p>No other required skills were identified.</p>'}<h2>4. Your 30 / 60 / 90-day action plan</h2>${plan}<h2>5. Track your progress</h2>${list((report.progressChecklist||[]).map(c=>c.skill+': '+c.deliverable+'; Check: '+c.evidence))}<p style="color:#59647c;font-size:12px;margin-top:24px">This short multiple-choice assessment shows your test performance; it does not prove workplace competence or guarantee employment. Confirm course fees and eligibility with the provider before enrolling. Your branded PDF report is attached.</p></main><footer style="padding:15px 24px;background:#17213d;color:#fff;font-size:12px">Career Guide for Professionals · <a href="https://www.aiearlycareerguide.com/professionals" style="color:#d5caff">aiearlycareerguide.com/professionals</a></footer></div></body></html>`;
+ // Stacked skill cards replace the old three-column overview, which overflowed on phones.
+ const overview=(report.skillAssessments||[]).map(s=>emailSection(`${h3(s.name)}${emailP('Your result',s.currentCompetency)}${emailP('Next step',priority(s.priority))}`)).join('');
+ const skills=(report.skillAssessments||[]).map(s=>emailSection(`${h3(s.name)}${emailP('What your next role needs',s.targetBenchmark)}${emailP('Your assessment result',s.currentCompetency)}${emailP('What to improve',s.gap)}${s.subskillsNeedingWork?.length?emailP('Topics to practise',s.subskillsNeedingWork.join(', ')):''}${s.subskillsNotTested?.length?emailP('Not covered by this assessment',s.subskillsNotTested.join(', ')):''}<h4 style="font-size:15px;color:#5938d4;margin:14px 0 6px">Your next steps</h4>${list(s.actions)}${emailP('Practical task',s.practiceTask)}${emailP('How to check progress',s.successIndicator)}${learn(s.learning)}`)).join('');
+ const extras=(report.additionalSkills||[]).map(s=>emailSection(`${h3(s.name+' — Not tested')}${emailP('What is expected',s.expectation)}${emailP('How to develop it',s.nextStep)}${emailP('How to check progress',s.howToVerify)}${learn(s.learning)}`)).join('');
+ const plan=(report.actionPlan||[]).map(s=>emailSection(`<h3 style="font-size:16px;color:#5938d4;margin:0 0 8px">${e(s.period)} — ${e(s.focus)}</h3>${list(s.actions)}`)).join('');
+ const content=`<h1 class="email-title" style="font-size:25px;line-height:1.3;margin:0 0 16px;color:#17213d">Your Career Competency &amp; Development Report</h1>
+ ${emailP('Your goal',report.targetRole||'Your next career move')}<p style="margin:14px 0 18px">${e(report.summary)}</p>
+ <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1edff;border-collapse:collapse"><tr><td style="padding:13px 15px;border-left:4px solid #6944e8"><strong>${e(report.coverage?.assessed??'?')} of ${e(report.coverage?.total??'?')}</strong> essential skills assessed</td></tr></table>
+ ${h2('1. Your essential skills at a glance')}${overview}
+ ${report.priorities?.length?`${h2('Where to focus first')}${list(report.priorities.map(s=>s.name+': '+s.firstAction))}`:''}
+ ${h2('2. Your skill-by-skill development plan')}${skills||'<p>Not enough information to assess these skills yet.</p>'}
+ ${h2('3. Other skills your goal may require')}${extras||'<p>No other required skills were identified.</p>'}
+ ${h2('4. Your 30 / 60 / 90-day action plan')}${plan}
+ ${h2('5. Track your progress')}${list((report.progressChecklist||[]).map(c=>c.skill+': '+c.deliverable+'; Check: '+c.evidence))}
+ <p style="font-size:12px;line-height:1.65;color:#59647c;margin-top:22px">This multiple-choice assessment shows your test performance; it does not prove workplace competence or guarantee employment. Confirm course fees and eligibility with the provider before enrolling. Your branded PDF report is attached.</p>`;
+ return emailFrame({subject:'Your Career Competency & Development Report',eyebrow:'Your personal career report and PDF attachment are ready.',body:content});
 }
 // Firestore lease + Resend idempotency key avoid duplicate sends on retries.
 export async function sendReportEmail(ref){
@@ -137,17 +177,17 @@ export function parseAccessLink(token,secret=process.env.RAZORPAY_KEY_SECRET){
  return {orderId,tokenHash:sha(random),expiresAt:Number(expires)};
 }
 export function accessEmailHtml({link,free=false,amount=0}){
- const esc=s=>String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;');
- return `<!doctype html><html><body style="font:16px/1.6 Arial,sans-serif;color:#192544;max-width:620px;margin:auto;padding:26px">
- <h1 style="color:#5835d4">Career Guide for Professionals</h1><p>by AI Early Career Guide</p>
- <h2>${free?'Your complimentary assessment is ready':'Your payment is confirmed'}</h2>
- <p>${free?'Your coupon covered the full ₹499 assessment fee.':'We received your payment of ₹'+(amount/100).toLocaleString('en-IN',{maximumFractionDigits:2})+'.'}</p>
- <p>Start your assessment now, or use this link to return if you close your browser. No password is required.</p>
- <p><a href="${esc(link)}" style="display:inline-block;padding:13px 20px;border-radius:9px;background:#603be5;color:white;text-decoration:none;font-weight:bold">Start or Resume Assessment →</a></p>
- <p style="font-size:13px;color:#65718a">This private link works once and expires after 7 days. If you need another link, enter the same email address on our website and select Continue Assessment. Do not forward this link.</p>
- <p style="font-size:13px;color:#65718a">Your final career report will be sent to this email address once completed.</p>
- <p style="font-size:13px">Need help? <a href="https://www.aiearlycareerguide.com/professionals/contact.html">Contact support</a>.</p>
- </body></html>`;
+ const title=free?'Your complimentary assessment is ready':'Your payment is confirmed';
+ const amountText=free?'Your coupon covers the full ₹499 assessment fee.':'We received your payment of ₹'+(amount/100).toLocaleString('en-IN',{maximumFractionDigits:2})+'.';
+ const safeLink=escEmail(link);
+ const content=`<h1 class="email-title" style="font-size:25px;line-height:1.3;margin:0 0 16px;color:#17213d">${title}</h1>
+ <p style="margin:0 0 14px;font-size:15px;line-height:1.6">${amountText}</p>
+ <p style="margin:0 0 20px;font-size:15px;line-height:1.6">You can start now or use your private link to return later. No password is needed.</p>
+ <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:20px 0"><tr><td align="center" style="border-radius:8px;background:#603be5"><a class="email-button" href="${safeLink}" style="display:block;padding:15px 18px;font-size:16px;line-height:1.4;font-weight:bold;text-align:center;color:#ffffff;text-decoration:none;border-radius:8px;background:#603be5">Start or Resume Assessment →</a></td></tr></table>
+ <p style="font-size:13px;line-height:1.6;color:#59647c;margin:18px 0">This private link works once and expires after seven days. Do not forward it. If it expires, enter your email on our website and select Continue Assessment.</p>
+ <p style="font-size:13px;line-height:1.6;color:#59647c;margin:12px 0">Your finished career report will be emailed to this address.</p>
+ <p style="font-size:13px;line-height:1.6;margin:14px 0 0">Need help? <a href="${EMAIL_HOME}/contact.html" style="color:#5938d4;text-decoration:underline">Contact support</a>.</p>`;
+ return emailFrame({subject:title,eyebrow:free?'Your free assessment access is confirmed.':'Your payment was successful. Your assessment link is inside.',body:content});
 }
 
 // Firestore lease prevents duplicate confirmation emails when browser + webhook race.

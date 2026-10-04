@@ -33,13 +33,13 @@ test('branded PDF embeds real logo, professional header and linked learning reso
 
 test('email is branded and user content is escaped without omitting the roadmap',()=>{
  const source=readFileSync(new URL('../api/_lib/commerce.js',import.meta.url),'utf8');
- const start=source.indexOf('export function receiptHtml(report){');
+ const start=source.indexOf('const EMAIL_HOME=');
  const end=source.indexOf('// Firestore lease + Resend idempotency',start);
  assert(start>0&&end>start);
  const snippet=source.slice(start,end).replace('export function receiptHtml','function receiptHtml');
  const receiptHtml=new Script(snippet+'\nreceiptHtml').runInContext(createContext({}));
  const safe={...report,summary:'A useful summary <img src=x onerror=alert(1)>'};const html=receiptHtml(safe);
- assert.match(html,/brand-logo\.webp/);assert.match(html,/Career Guide for/);assert.match(html,/Your skill-by-skill development plan/);assert.match(html,/Days 1–30/);
+ assert.match(html,/brand-logo\-email\.png/);assert.match(html,/Career Guide for/);assert.match(html,/Your skill-by-skill development plan/);assert.match(html,/Days 1–30/);
  assert.match(html,/&lt;img/);assert.doesNotMatch(html,/<img src=x onerror/);
  assert.match(source,/attachments:\[/);assert.match(source,/buildReportPdf\(reserved\.report\)/);
 });
