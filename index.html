@@ -528,6 +528,7 @@ function reportLearning(parent,learning){
  if(learning.freeGap)reportText(parent,'p',learning.freeGap,'report-meta');
  if(learning.paidGap)reportText(parent,'p',learning.paidGap,'report-meta');
 }
+function friendlyReportPriority(value){return ({'High development priority':'Start here','Development priority':'Work on this','Maintain and stretch':'Build on this strength','More assessment needed':'More practice needed'}[value]||value||'Review');}
 function renderCareerReport(report,generatedAt){
  currentCareerReport=report;currentReportDate=generatedAt||null;
  const heading=document.querySelector('#report h2');heading.textContent='Your career competency & development report';
@@ -540,36 +541,36 @@ function renderCareerReport(report,generatedAt){
   for(const [n,caption] of [[report.coverage.total,'Essential skills'],[`${report.coverage.assessed}/${report.coverage.total}`,'Fully assessed'],[report.priorities?.length||0,'Development priorities']]){
    const div=document.createElement('div');div.className='report-fact';reportText(div,'strong',String(n));reportText(div,'small',caption);facts.appendChild(div);
   }cover.appendChild(facts);host.appendChild(cover);
-  reportText(host,'h3','1. Essential competency overview');
+  reportText(host,'h3','1. Your essential skills at a glance');
   const scroll=document.createElement('div');scroll.className='report-matrix-scroll';const table=document.createElement('table');table.className='report-matrix';
-  const thead=document.createElement('thead'),header=document.createElement('tr');for(const col of ['Essential skill','Role expectation','Current test-based finding','Priority'])reportText(header,'th',col);thead.appendChild(header);table.appendChild(thead);
-  const tbody=document.createElement('tbody');for(const skill of report.skillAssessments||[]){const tr=document.createElement('tr');for(const value of [skill.name,skill.targetBenchmark,skill.currentCompetency,skill.priority])reportText(tr,'td',value||'Not assessed');tbody.appendChild(tr);}table.appendChild(tbody);scroll.appendChild(table);host.appendChild(scroll);
-  if(report.priorities?.length){reportText(host,'h3','Your immediate development priorities');reportBulletList(host,report.priorities.map(p=>`${p.name}: ${p.firstAction}`),'report-shortlist');}
-  reportText(host,'h3','2. Your essential skills: individual development plans');
+  const thead=document.createElement('thead'),header=document.createElement('tr');for(const col of ['Essential skill','What the role needs','Your result','Next step'])reportText(header,'th',col);thead.appendChild(header);table.appendChild(thead);
+  const tbody=document.createElement('tbody');for(const skill of report.skillAssessments||[]){const tr=document.createElement('tr');for(const value of [skill.name,skill.targetBenchmark,skill.currentCompetency,friendlyReportPriority(skill.priority)])reportText(tr,'td',value||'Not assessed');tbody.appendChild(tr);}table.appendChild(tbody);scroll.appendChild(table);host.appendChild(scroll);
+  if(report.priorities?.length){reportText(host,'h3','Where to focus first');reportBulletList(host,report.priorities.map(p=>`${p.name}: ${p.firstAction}`),'report-shortlist');}
+  reportText(host,'h3','2. Your skill-by-skill development plan');
   for(const skill of report.skillAssessments||[]){const div=document.createElement('article');div.className='report-skill';reportText(div,'h4',skill.name);
-   reportText(div,'span',skill.type==='behavioural'?'Behavioural skill':'Technical skill','report-tag');reportText(div,'span',skill.priority||'Review','report-tag');
-   reportText(div,'p','Required for the target role: '+skill.targetBenchmark);
-   reportText(div,'p','Your current test-based finding: '+skill.currentCompetency);
-   reportText(div,'p','Specific gap or next-level opportunity: '+skill.gap);
-   if(skill.subskillsNeedingWork?.length)reportText(div,'p','Subskills to practise: '+skill.subskillsNeedingWork.join(', '));
-   if(skill.subskillsNotTested?.length)reportText(div,'p','Subskills this test did not cover: '+skill.subskillsNotTested.join(', '),'report-meta');
-   reportText(div,'h5','What to do');reportBulletList(div,skill.actions);
-   reportText(div,'p','Practical assignment: '+skill.practiceTask);
-   reportText(div,'p','How to demonstrate progress: '+skill.successIndicator);
+   reportText(div,'span',skill.type==='behavioural'?'Behavioural skill':'Technical skill','report-tag');reportText(div,'span',friendlyReportPriority(skill.priority),'report-tag');
+   reportText(div,'p','What your next role needs: '+skill.targetBenchmark);
+   reportText(div,'p','Your assessment result: '+skill.currentCompetency);
+   reportText(div,'p','What to improve: '+skill.gap);
+   if(skill.subskillsNeedingWork?.length)reportText(div,'p','Topics to practise: '+skill.subskillsNeedingWork.join(', '));
+   if(skill.subskillsNotTested?.length)reportText(div,'p','Not covered by this assessment: '+skill.subskillsNotTested.join(', '),'report-meta');
+   reportText(div,'h5','Your next steps');reportBulletList(div,skill.actions);
+   reportText(div,'p','Practical task: '+skill.practiceTask);
+   reportText(div,'p','How to check progress: '+skill.successIndicator);
    reportLearning(div,skill.learning);host.appendChild(div);
   }
-  reportText(host,'h3','3. Other required skills — not assessed');
+  reportText(host,'h3','3. Other skills your goal may require');
   for(const skill of report.additionalSkills||[]){const div=document.createElement('article');div.className='report-skill';reportText(div,'h4',skill.name+' · Not tested');
-   reportText(div,'p','Expected for this role: '+skill.expectation);reportText(div,'p','How to develop it: '+skill.nextStep);
-   reportText(div,'p','How to validate: '+skill.howToVerify);reportLearning(div,skill.learning);host.appendChild(div);}
-  reportText(host,'h3','4. Your personalised 30 / 60 / 90-day plan');
+   reportText(div,'p','What is expected: '+skill.expectation);reportText(div,'p','How to develop it: '+skill.nextStep);
+   reportText(div,'p','How to check progress: '+skill.howToVerify);reportLearning(div,skill.learning);host.appendChild(div);}
+  reportText(host,'h3','4. Your 30 / 60 / 90-day action plan');
   const pref=report.learningPreferences;if(pref)reportText(host,'p',`Your plan: ${pref.weeklyHours} per week · Budget: ${pref.budget} · Preferred format: ${pref.learningStyle}`,'report-meta');
   for(const part of report.actionPlan||[]){const div=document.createElement('article');div.className='report-plan';reportText(div,'h4',part.period+' — '+part.focus);reportBulletList(div,part.actions);host.appendChild(div);}
-  reportText(host,'h3','5. Progress and reassessment');reportBulletList(host,(report.progressChecklist||[]).map(c=>`${c.skill}: ${c.deliverable} · Evidence: ${c.evidence}`),'report-checklist');
+  reportText(host,'h3','5. Track your progress');reportBulletList(host,(report.progressChecklist||[]).map(c=>`${c.skill}: ${c.deliverable} · Evidence: ${c.evidence}`),'report-checklist');
   reportText(host,'p',`Learning catalogue checked: ${report.learningCatalogueReviewed||'See provider websites'}. Course fees and availability can change. Use provider links to confirm the latest details.`,'report-meta');
  }else{
   const summary=document.createElement('div');summary.className='report-note';reportText(summary,'strong',report.targetRole?'Target role: '+report.targetRole:'Your target role');reportText(summary,'p',report.summary);host.appendChild(summary);
-  if(report.coverage){reportSection(host,'Essential skills',report.skillAssessments||[],(wrap,item)=>{reportText(wrap,'strong',item.name);reportText(wrap,'p','Required competency: '+item.targetBenchmark);reportText(wrap,'p','Current test-based finding: '+item.currentCompetency);reportText(wrap,'p','Development: '+item.gap);reportBulletList(wrap,item.actions);});reportSection(host,'Other required skills — not tested',report.additionalSkills||[],(wrap,item)=>{reportText(wrap,'strong',item.name);reportText(wrap,'p',item.expectation);});}
+  if(report.coverage){reportSection(host,'Essential skills',report.skillAssessments||[],(wrap,item)=>{reportText(wrap,'strong',item.name);reportText(wrap,'p','What the role needs: '+item.targetBenchmark);reportText(wrap,'p','Your assessment result: '+item.currentCompetency);reportText(wrap,'p','What to work on: '+item.gap);reportBulletList(wrap,item.actions);});reportSection(host,'Other required skills — not tested',report.additionalSkills||[],(wrap,item)=>{reportText(wrap,'strong',item.name);reportText(wrap,'p',item.expectation);});}
   else{reportSection(host,'Strengths',report.strengths||[],(w,x)=>{reportText(w,'strong',x.strength);reportText(w,'p',x.evidence)});reportSection(host,'Development opportunities',report.developmentAreas||[],(w,x)=>{reportText(w,'strong',x.area);reportText(w,'p',x.nextStep)});}
   reportSection(host,'Your 30 / 60 / 90-day plan',report.actionPlan||[],(wrap,item)=>{reportText(wrap,'strong',item.period+' — '+item.focus);reportBulletList(wrap,item.actions)});
  }
