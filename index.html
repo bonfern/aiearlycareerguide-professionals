@@ -9,6 +9,10 @@
 const PROFESSIONALS_BASE = location.pathname === '/professionals' || location.pathname.startsWith('/professionals/') ? '/professionals/' : '/';
 const baseElement=document.createElement('base');baseElement.href=PROFESSIONALS_BASE;document.head.appendChild(baseElement);
 </script>
+<!-- The same AI Early Career Guide favicon as the student site; relative paths use the /professionals/ rewrite when on the main domain. -->
+<link rel="icon" href="favicon.ico?v=3" sizes="any">
+<link rel="icon" type="image/png" href="favicon-32x32.png?v=3" sizes="32x32">
+<link rel="apple-touch-icon" href="apple-touch-icon.png?v=3">
 <script>
 // Hide intermediate pages while a one-time cross-domain transfer is redeemed.
 if(/^#(?:transfer|access)=/.test(location.hash))document.documentElement.classList.add('access-restoring');
