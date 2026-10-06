@@ -89,7 +89,7 @@ const emailP=(label,value)=>`<p style="margin:0 0 10px;font-size:15px;line-heigh
 const emailSection=content=>`<table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;margin:14px 0"><tr><td style="padding:15px 14px;border:1px solid #e9e5f5;background:#fcfbff;word-wrap:break-word;overflow-wrap:break-word">${content}</td></tr></table>`;
 export function receiptHtml(report){
  const e=escEmail;
- const priority=s=>({'High development priority':'Start here','Development priority':'Work on this','Maintain and stretch':'Build on this strength','More assessment needed':'More practice needed'}[s]||s||'Review');
+ const priority=s=>({'High development priority':'Start here','Development priority':'Build further','Maintain and stretch':'Build on this strength','More assessment needed':'Practise and validate'}[s]||s||'Review');
  const h2=txt=>`<h2 style="font-size:19px;line-height:1.35;color:#17213d;margin:25px 0 12px">${e(txt)}</h2>`;
  const h3=txt=>`<h3 style="font-size:16px;line-height:1.4;color:#17213d;margin:0 0 10px">${e(txt)}</h3>`;
  const list=arr=>`<ul style="margin:8px 0 14px;padding:0 0 0 20px">${(arr||[]).map(x=>`<li style="padding:0 0 8px 0;margin:0;line-height:1.6">${e(x)}</li>`).join('')}</ul>`;
@@ -97,22 +97,22 @@ export function receiptHtml(report){
   const group=(title,items)=>items?.length?`<h4 style="font-size:15px;line-height:1.4;color:#5938d4;margin:16px 0 6px">${e(title)}</h4><ul style="margin:0;padding:0 0 0 20px">${items.map(r=>{const url=String(r.url||'');const href=/^https:\/\/[^\s"<>]+$/i.test(url)?` href="${e(url)}"`:'',name=e(r.name);return `<li style="margin:0 0 10px;line-height:1.6;overflow-wrap:break-word">${href?`<a${href} style="color:#5938d4;text-decoration:underline;overflow-wrap:anywhere">${name}</a>`:name} — ${e(r.provider)}${r.description?'. '+e(r.description):''}${r.time?' ('+e(r.time)+')':''}</li>`;}).join('')}</ul>`:'';
   return group('Free learning',learning.free)+group('Paid courses — check current fees',learning.paid)+group('Optional certifications',learning.certifications)+(learning.freeGap?`<p style="color:#59647c">${e(learning.freeGap)}</p>`:'');
  };
- // Stacked skill cards replace the old three-column overview, which overflowed on phones.
- const overview=(report.skillAssessments||[]).map(s=>emailSection(`${h3(s.name)}${emailP('Your result',s.currentCompetency)}${emailP('Next step',priority(s.priority))}`)).join('');
- const skills=(report.skillAssessments||[]).map(s=>emailSection(`${h3(s.name)}${emailP('What your next role needs',s.targetBenchmark)}${emailP('Your assessment result',s.currentCompetency)}${emailP('What to improve',s.gap)}${s.subskillsNeedingWork?.length?emailP('Topics to practise',s.subskillsNeedingWork.join(', ')):''}${s.subskillsNotTested?.length?emailP('Not covered by this assessment',s.subskillsNotTested.join(', ')):''}<h4 style="font-size:15px;color:#5938d4;margin:14px 0 6px">Your next steps</h4>${list(s.actions)}${emailP('Practical task',s.practiceTask)}${emailP('How to check progress',s.successIndicator)}${learn(s.learning)}`)).join('');
- const extras=(report.additionalSkills||[]).map(s=>emailSection(`${h3(s.name+' — Not tested')}${emailP('What is expected',s.expectation)}${emailP('How to develop it',s.nextStep)}${emailP('How to check progress',s.howToVerify)}${learn(s.learning)}`)).join('');
+ const focusGroup=(title,items)=>emailSection(`${h3(title)}${items?.length?items.map(s=>`<p style="margin:0 0 11px;line-height:1.55"><strong>${e(s.name)}</strong><br><span style="color:#59647c">${e(s.currentCompetency||'Not assessed')} · ${e(s.status||priority(s.priority))}</span><br>${e('First action: '+(s.firstAction||'Use the detailed skill plan below.'))}</p>`).join(''):'<p>No essential capabilities in this category were included in the assessment.</p>'}`);
+ const route=(report.goalPath?.careerActions||[]).map((s,i)=>emailSection(`<h3 style="font-size:16px;color:#5938d4;margin:0 0 7px">${e((i+1)+'. '+s.title)}</h3><p style="margin:0 0 9px;line-height:1.6">${e(s.action)}</p>${emailP('Outcome to aim for',s.outcome)}`)).join('');
+ const skills=(report.skillAssessments||[]).map(s=>emailSection(`${h3(s.name)}${emailP('What the target role needs',s.targetBenchmark)}${emailP('Your assessment result',s.currentCompetency)}${emailP('What to build further',s.gap)}${s.subskillsNeedingWork?.length?emailP('Topics to practise',s.subskillsNeedingWork.join(', ')):''}${s.subskillsNotTested?.length?emailP('Not covered by this assessment',s.subskillsNotTested.join(', ')):''}<h4 style="font-size:15px;color:#5938d4;margin:14px 0 6px">Do these activities</h4>${list(s.actions)}${emailP('Practical evidence task',s.practiceTask)}${emailP('How to check progress',s.successIndicator)}${learn(s.learning)}`)).join('');
+ const extras=(report.additionalSkills||[]).map(s=>emailSection(`${h3(s.name+' — Not tested')}${emailP('What is expected',s.expectation)}${emailP('How to build it',s.nextStep)}${emailP('How to demonstrate it',s.howToVerify)}${learn(s.learning)}`)).join('');
  const plan=(report.actionPlan||[]).map(s=>emailSection(`<h3 style="font-size:16px;color:#5938d4;margin:0 0 8px">${e(s.period)} — ${e(s.focus)}</h3>${list(s.actions)}`)).join('');
- const content=`<h1 class="email-title" style="font-size:25px;line-height:1.3;margin:0 0 16px;color:#17213d">Your Career Competency &amp; Development Report</h1>
- ${emailP('Your goal',report.targetRole||'Your next career move')}<p style="margin:14px 0 18px">${e(report.summary)}</p>
- <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1edff;border-collapse:collapse"><tr><td style="padding:13px 15px;border-left:4px solid #6944e8"><strong>${e(report.coverage?.assessed??'?')} of ${e(report.coverage?.total??'?')}</strong> essential skills assessed</td></tr></table>
- ${h2('1. Your essential skills at a glance')}${overview}
- ${report.priorities?.length?`${h2('Where to focus first')}${list(report.priorities.map(s=>s.name+': '+s.firstAction))}`:''}
- ${h2('2. Your skill-by-skill development plan')}${skills||'<p>Not enough information to assess these skills yet.</p>'}
- ${h2('3. Other skills your goal may require')}${extras||'<p>No other required skills were identified.</p>'}
- ${h2('4. Your 30 / 60 / 90-day action plan')}${plan}
- ${h2('5. Track your progress')}${list((report.progressChecklist||[]).map(c=>c.skill+': '+c.deliverable+'; Check: '+c.evidence))}
+ const goal=report.targetRole||'Your next career move';
+ const content=`<h1 class="email-title" style="font-size:25px;line-height:1.3;margin:0 0 10px;color:#17213d">${e(report.goalPath?.headline||'Your career action & skill development report')}</h1>
+ ${emailP('Your goal',goal)}<p style="margin:14px 0 18px;font-size:16px;line-height:1.7">${e(report.summary)}</p>
+ <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1edff;border-collapse:collapse"><tr><td style="padding:13px 15px;border-left:4px solid #6944e8"><strong>${e(report.coverage?.assessed??'?')} of ${e(report.coverage?.total??'?')}</strong> essential capabilities assessed</td></tr></table>
+ ${h2('1. What you need to build for '+goal)}${focusGroup('Technical capabilities',report.capabilityFocus?.technical||[])}${focusGroup('Leadership & behavioural capabilities',report.capabilityFocus?.behavioural||[])}
+ ${h2('2. How to get there')}${route||'<p>Your detailed skill plan below is the starting point.</p>'}
+ ${h2('3. Your skill-by-skill development plan')}${skills||'<p>Not enough information to assess these skills yet.</p>'}
+ ${h2('4. Other capabilities your goal may require')}${extras||'<p>No additional role requirements were identified outside the essential skills tested.</p>'}
+ ${h2('5. Your 30 / 60 / 90-day execution plan')}${plan}
  <p style="font-size:12px;line-height:1.65;color:#59647c;margin-top:22px">This multiple-choice assessment shows your test performance; it does not prove workplace competence or guarantee employment. Confirm course fees and eligibility with the provider before enrolling. Your branded PDF report is attached.</p>`;
- return emailFrame({subject:'Your Career Competency & Development Report',eyebrow:'Your personal career report and PDF attachment are ready.',body:content});
+ return emailFrame({subject:'Your Career Action & Skill Development Report',eyebrow:'Your practical route to your stated career goal is ready.',body:content});
 }
 // Firestore lease + Resend idempotency key avoid duplicate sends on retries.
 export async function sendReportEmail(ref){
@@ -138,7 +138,7 @@ export async function sendReportEmail(ref){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
   let response,body;
   try{
-   response=await fetch('https://api.resend.com/emails',{method:'POST',signal:controller.signal,headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json','Idempotency-Key':`career-report-${reserved.sessionId}`},body:JSON.stringify({from:process.env.REPORT_FROM_EMAIL,to:[reserved.to],subject:'Your Career Competency & Development Report — PDF attached',html:receiptHtml(reserved.report),attachments:[{filename:'career-competency-development-report.pdf',content:buildReportPdf(reserved.report).toString('base64'),content_type:'application/pdf'}]})});
+   response=await fetch('https://api.resend.com/emails',{method:'POST',signal:controller.signal,headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json','Idempotency-Key':`career-report-${reserved.sessionId}`},body:JSON.stringify({from:process.env.REPORT_FROM_EMAIL,to:[reserved.to],subject:'Your Career Action & Skill Development Report — PDF attached',html:receiptHtml(reserved.report),attachments:[{filename:'career-action-skill-development-report.pdf',content:buildReportPdf(reserved.report).toString('base64'),content_type:'application/pdf'}]})});
    body=await response.json();
   }finally{clearTimeout(timer);}
   if(!response.ok||!body?.id){console.error('Resend error status',response.status,body?.name||'');throw new ApiError(502,'Report email could not be sent. You can retry from the report page.');}

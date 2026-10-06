@@ -28,44 +28,48 @@ export function buildReportPdf(report){
    if(safeUrl){const urlY=y;lines('View the course: '+safeUrl,{indent:14,max:91,size:8,color:C.teal,leading:11});current.links.push({url:safeUrl,rect:[59,Math.max(62,urlY-10),547,Math.min(742,yTop+11)]});}
    gap(3);
   }}
- // First-page report title and overview.
- title('CAREER COMPETENCY & DEVELOPMENT REPORT',1);
- lines('Your skills and a clear plan for your next career step',{size:10,color:C.muted});gap(9);
- lines('YOUR GOAL',{size:9,bold:true,color:C.purple});lines(report.targetRole||'Your next career move',{size:13,bold:true,max:73,leading:18});gap(9);
- lines(report.summary||'Your report shows the skills your next role needs and where to focus your development.',{size:10,max:95,leading:15});gap(12);
- ensure(54);rect(43,y-28,509,44,C.lavender);textAt(`${report.coverage?.assessed??0} of ${report.coverage?.total??0} essential skills assessed`,58,y-2,11,true,C.navy);textAt(`${report.priorities?.length??0} development priorities`,58,y-20,10,false,C.purple);y-=57;
- title('1. Your essential skills at a glance');
- for(const s of report.skillAssessments||[]){
-  const targetLines=wrap('Role requirement: '+(s.targetBenchmark||'See detailed skill section.'),88),h=38+targetLines.length*12;
-  ensure(h+8);rect(43,y-h+16,509,h,C.light);textAt(s.name||'Essential skill',54,y,11,true,C.navy);y-=16;
-  lines(`Your result: ${s.currentCompetency||'Not assessed'}  |  Next step: ${friendlyPriority(s.priority)}`,{indent:5,size:9,max:88,leading:13,color:C.purple});
-  for(const t of targetLines){textAt(t,54,y,9,false,C.muted);y-=12;}gap(15);
+ // First-page report title and direct career route.
+ title('CAREER ACTION & SKILL DEVELOPMENT REPORT',1);
+ lines('A direct route from your current position to your stated career goal',{size:10,color:C.muted});gap(9);
+ lines('YOUR GOAL',{size:9,bold:true,color:C.purple});lines(report.goalPath?.headline||report.targetRole||'Your next career move',{size:13,bold:true,max:73,leading:18});gap(9);
+ lines(report.summary||'Your report shows what to build and what to do next.',{size:10,max:95,leading:15});gap(12);
+ ensure(54);rect(43,y-28,509,44,C.lavender);textAt(`${report.coverage?.assessed??0} of ${report.coverage?.total??0} essential capabilities assessed`,58,y-2,11,true,C.navy);textAt(`${report.priorities?.length??0} priority areas to build further`,58,y-20,10,false,C.purple);y-=57;
+
+ title(`1. What you need to build for ${report.targetRole||'your goal'}`);
+ const capabilityGroups=[['TECHNICAL CAPABILITIES',report.capabilityFocus?.technical||[]],['LEADERSHIP & BEHAVIOURAL CAPABILITIES',report.capabilityFocus?.behavioural||[]]];
+ for(const [heading,items] of capabilityGroups){
+  lines(heading,{size:9,bold:true,color:C.purple});
+  if(!items.length){lines('No essential capabilities in this category were included in the assessment.',{size:9,color:C.muted});gap(6);continue;}
+  for(const item of items){ensure(42);lines(item.name,{size:10,bold:true,max:90,leading:13});lines(`${item.currentCompetency||'Not assessed'} | ${item.status||friendlyPriority(item.priority)}`,{size:9,color:C.muted,max:93,leading:12});lines('First action: '+(item.firstAction||'Use the detailed skill plan below.'),{size:9,max:93,leading:12});gap(5);}
+  gap(4);
  }
- if(report.priorities?.length){title('Where to focus first');bulletList(report.priorities.map(s=>`${s.name}: ${s.firstAction}`));}
- title('2. Your skill-by-skill development plan');
+
+ title('2. How to get there');
+ let stepNo=0;
+ for(const step of report.goalPath?.careerActions||[]){stepNo++;ensure(58);lines(`${stepNo}. ${step.title}`,{size:11,bold:true,color:C.purple,max:86,leading:15});lines(step.action,{size:10,max:95,leading:14});lines('Outcome to aim for: '+step.outcome,{size:9,color:C.muted,max:99,leading:12});gap(8);}
+
+ title('3. Your skill-by-skill development plan');
  for(const s of report.skillAssessments||[]){
   ensure(72);title(s.name||'Essential skill');
-  labelled('WHAT YOUR NEXT ROLE NEEDS',s.targetBenchmark);
-  labelled('YOUR CURRENT LEVEL',s.currentCompetency);
-  labelled('WHAT TO IMPROVE',s.gap);
+  labelled('WHAT THE TARGET ROLE NEEDS',s.targetBenchmark);
+  labelled('YOUR ASSESSMENT RESULT',s.currentCompetency);
+  labelled('WHAT TO BUILD FURTHER',s.gap);
   if(s.subskillsNeedingWork?.length)labelled('SPECIFIC TOPICS TO PRACTISE',s.subskillsNeedingWork.join('; '));
-  if(s.subskillsNotTested?.length)labelled('TOPICS NOT COVERED BY THIS ASSESSMENT',s.subskillsNotTested.join('; '));
-  lines('YOUR NEXT STEPS',{bold:true,color:C.purple,size:9});bulletList(s.actions);
-  labelled('PRACTISE WITH THIS TASK',s.practiceTask);
+  if(s.subskillsNotTested?.length)labelled('NOT COVERED BY THIS ASSESSMENT',s.subskillsNotTested.join('; '));
+  lines('DO THESE ACTIVITIES',{bold:true,color:C.purple,size:9});bulletList(s.actions);
+  labelled('PRACTICAL EVIDENCE TASK',s.practiceTask);
   labelled('HOW TO KNOW YOU ARE IMPROVING',s.successIndicator);
   resources('Free learning',s.learning?.free);resources('Paid courses',s.learning?.paid);resources('Optional certifications',s.learning?.certifications);
   if(s.learning?.freeGap)lines(s.learning.freeGap,{size:9,color:C.muted});gap(9);
  }
- title('3. Other skills your goal may require');
- if(!report.additionalSkills?.length)lines('No additional skills were identified for this assessment.');
- for(const s of report.additionalSkills||[]){ensure(55);title(`${s.name} - Not tested`);labelled('WHAT IS EXPECTED',s.expectation);labelled('HOW TO LEARN IT',s.nextStep);labelled('HOW TO CHECK YOUR PROGRESS',s.howToVerify);resources('Free resources',s.learning?.free?.slice(0,1));gap(6);}
- title('4. Your 30 / 60 / 90-day action plan');
+ title('4. Other capabilities your goal may require');
+ if(!report.additionalSkills?.length)lines('No additional role requirements were identified outside the essential skills tested.');
+ for(const s of report.additionalSkills||[]){ensure(55);title(`${s.name} - Not tested`);labelled('WHAT IS EXPECTED',s.expectation);labelled('HOW TO BUILD IT',s.nextStep);labelled('HOW TO DEMONSTRATE IT',s.howToVerify);resources('Free resources',s.learning?.free?.slice(0,1));gap(6);}
+ title('5. Your 30 / 60 / 90-day execution plan');
  const pref=report.learningPreferences;
- if(pref)lines(`Study time: ${pref.weeklyHours} each week | Budget: ${pref.budget} | Learning style: ${pref.learningStyle}`,{size:9,color:C.muted});
+ if(pref)lines(`Learning time: ${pref.weeklyHours} each week | Budget: ${pref.budget} | Learning style: ${pref.learningStyle}`,{size:9,color:C.muted});
  for(const p of report.actionPlan||[]){ensure(55);title(`${p.period}: ${p.focus}`);bulletList(p.actions);gap(4);}
- title('5. Track your progress');
- for(const p of report.progressChecklist||[])bulletList([`${p.skill}: ${p.deliverable} | Check: ${p.evidence}`]);
- gap(10);lines('Important: these results show your performance on a short multiple-choice assessment. They do not prove workplace experience or guarantee a job. Check course fees and eligibility with each provider before you enrol.',{size:9,color:C.muted,max:105,leading:13});
+ gap(10);lines('Important: these results show performance on a short multiple-choice assessment. They do not prove workplace experience or guarantee a job. Confirm course fees and eligibility with each provider before you enrol.',{size:9,color:C.muted,max:105,leading:13});
  flush();
  // Build a complete binary PDF with an embedded logo, brand-coloured page headers,
  // clickable resource links and correct byte offsets for JPEG streams.

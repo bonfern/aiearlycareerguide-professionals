@@ -18,11 +18,12 @@ export default async function handler(req,res){
       if(s.assessmentContractVersion===17 && (coverage.total===0||coverage.assessed!==coverage.total||
          coverage.skills.some(skill=>skill.answered<3)))
        throw new ApiError(409,'Complete all three questions for every essential skill before accessing your report.');
-      if(s.report)return {kind:'cached',report:s.report,generatedAt:s.reportGeneratedAt?.toDate?.()?.toISOString?.()||null,paid:Boolean(s.paid)};
+      if(s.report&&Number(s.report.reportVersion||0)>=3)return {kind:'cached',report:s.report,generatedAt:s.reportGeneratedAt?.toDate?.()?.toISOString?.()||null,paid:Boolean(s.paid)};
       if(s.status!=='complete'||coverage.total===0||coverage.assessed!==coverage.total||
          coverage.skills.some(skill=>skill.answered<3))
        throw new ApiError(409,'Complete all three questions for every essential skill before generating your report.');
-      if(s.reportCallsUsed>=2)throw new ApiError(429,'Report generation limit reached for this preview session.');
+      const upgradingOldReport=Boolean(s.report)&&Number(s.report.reportVersion||0)<3;
+      if(!upgradingOldReport&&s.reportCallsUsed>=2)throw new ApiError(429,'Report generation limit reached for this preview session.');
       if(s.reportLease?.until>Date.now())throw new ApiError(409,'Your report is already being generated. Please wait and try again.');
       leaseId=crypto.randomUUID();
       tx.update(ref,{reportLease:{id:leaseId,until:Date.now()+175000},reportCallsUsed:(s.reportCallsUsed||0)+1,updatedAt:new Date()});
