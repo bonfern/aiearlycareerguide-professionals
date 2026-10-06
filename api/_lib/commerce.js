@@ -98,18 +98,23 @@ export function receiptHtml(report){
   return group('Free learning',learning.free)+group('Paid courses — check current fees',learning.paid)+group('Optional certifications',learning.certifications)+(learning.freeGap?`<p style="color:#59647c">${e(learning.freeGap)}</p>`:'');
  };
  const focusGroup=(title,items)=>emailSection(`${h3(title)}${items?.length?items.map(s=>`<p style="margin:0 0 11px;line-height:1.55"><strong>${e(s.name)}</strong><br><span style="color:#59647c">${e(s.currentCompetency||'Not assessed')} · ${e(s.status||priority(s.priority))}</span><br>${e('First action: '+(s.firstAction||'Use the detailed skill plan below.'))}</p>`).join(''):'<p>No essential capabilities in this category were included in the assessment.</p>'}`);
+ const quickItems=items=>{const meaningful=(items||[]).filter(x=>x.priority!=='Maintain and stretch');const source=meaningful.length?meaningful:(items||[]);return source.slice(0,3).map(x=>x.name+' — '+(x.status||priority(x.priority)));};
+ const quickCategory=(title,items)=>emailSection(`${h3(title)}${list(items?.length?items:['See the detailed plan below.'])}`);
  const route=(report.goalPath?.careerActions||[]).map((s,i)=>emailSection(`<h3 style="font-size:16px;color:#5938d4;margin:0 0 7px">${e((i+1)+'. '+s.title)}</h3><p style="margin:0 0 9px;line-height:1.6">${e(s.action)}</p>${emailP('Outcome to aim for',s.outcome)}`)).join('');
  const skills=(report.skillAssessments||[]).map(s=>emailSection(`${h3(s.name)}${emailP('What the target role needs',s.targetBenchmark)}${emailP('Your assessment result',s.currentCompetency)}${emailP('What to build further',s.gap)}${s.subskillsNeedingWork?.length?emailP('Topics to practise',s.subskillsNeedingWork.join(', ')):''}${s.subskillsNotTested?.length?emailP('Not covered by this assessment',s.subskillsNotTested.join(', ')):''}<h4 style="font-size:15px;color:#5938d4;margin:14px 0 6px">Do these activities</h4>${list(s.actions)}${emailP('Practical evidence task',s.practiceTask)}${emailP('How to check progress',s.successIndicator)}${learn(s.learning)}`)).join('');
  const extras=(report.additionalSkills||[]).map(s=>emailSection(`${h3(s.name+' — Not tested')}${emailP('What is expected',s.expectation)}${emailP('How to build it',s.nextStep)}${emailP('How to demonstrate it',s.howToVerify)}${learn(s.learning)}`)).join('');
  const plan=(report.actionPlan||[]).map(s=>emailSection(`<h3 style="font-size:16px;color:#5938d4;margin:0 0 8px">${e(s.period)} — ${e(s.focus)}</h3>${list(s.actions)}`)).join('');
  const goal=report.targetRole||'Your next career move';
  const content=`<h1 class="email-title" style="font-size:25px;line-height:1.3;margin:0 0 10px;color:#17213d">${e(report.goalPath?.headline||'Your career action & skill development report')}</h1>
- ${emailP('Your goal',goal)}<p style="margin:14px 0 18px;font-size:16px;line-height:1.7">${e(report.summary)}</p>
+ ${emailP('Your goal',goal)}
+ ${quickCategory('Technical priorities',quickItems(report.capabilityFocus?.technical||[]))}
+ ${quickCategory('Leadership & behavioural priorities',quickItems(report.capabilityFocus?.behavioural||[]))}
+ ${quickCategory('Career actions to take',(report.goalPath?.careerActions||[]).slice(0,3).map(s=>s.title))}
  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f1edff;border-collapse:collapse"><tr><td style="padding:13px 15px;border-left:4px solid #6944e8"><strong>${e(report.coverage?.assessed??'?')} of ${e(report.coverage?.total??'?')}</strong> essential capabilities assessed</td></tr></table>
  ${h2('1. What you need to build for '+goal)}${focusGroup('Technical capabilities',report.capabilityFocus?.technical||[])}${focusGroup('Leadership & behavioural capabilities',report.capabilityFocus?.behavioural||[])}
  ${h2('2. How to get there')}${route||'<p>Your detailed skill plan below is the starting point.</p>'}
  ${h2('3. Your skill-by-skill development plan')}${skills||'<p>Not enough information to assess these skills yet.</p>'}
- ${h2('4. Other capabilities your goal may require')}${extras||'<p>No additional role requirements were identified outside the essential skills tested.</p>'}
+ ${h2('4. Other high-priority capabilities your goal may require')}${extras||'<p>No additional role requirements were identified outside the essential skills tested.</p>'}
  ${h2('5. Your 30 / 60 / 90-day execution plan')}${plan}
  <p style="font-size:12px;line-height:1.65;color:#59647c;margin-top:22px">This multiple-choice assessment shows your test performance; it does not prove workplace competence or guarantee employment. Confirm course fees and eligibility with the provider before enrolling. Your branded PDF report is attached.</p>`;
  return emailFrame({subject:'Your Career Action & Skill Development Report',eyebrow:'Your practical route to your stated career goal is ready.',body:content});

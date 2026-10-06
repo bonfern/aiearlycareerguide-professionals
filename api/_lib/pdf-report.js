@@ -32,8 +32,10 @@ export function buildReportPdf(report){
  title('CAREER ACTION & SKILL DEVELOPMENT REPORT',1);
  lines('A direct route from your current position to your stated career goal',{size:10,color:C.muted});gap(9);
  lines('YOUR GOAL',{size:9,bold:true,color:C.purple});lines(report.goalPath?.headline||report.targetRole||'Your next career move',{size:13,bold:true,max:73,leading:18});gap(9);
- lines(report.summary||'Your report shows what to build and what to do next.',{size:10,max:95,leading:15});gap(12);
- ensure(54);rect(43,y-28,509,44,C.lavender);textAt(`${report.coverage?.assessed??0} of ${report.coverage?.total??0} essential capabilities assessed`,58,y-2,11,true,C.navy);textAt(`${report.priorities?.length??0} priority areas to build further`,58,y-20,10,false,C.purple);y-=57;
+ const priorityItems=(items,limit=3)=>{const meaningful=(items||[]).filter(item=>item.priority!=='Maintain and stretch');const source=meaningful.length?meaningful:(items||[]);return source.slice(0,limit).map(item=>`${item.name} - ${item.status||friendlyPriority(item.priority)}`);};
+ const quickGroups=[['TECHNICAL PRIORITIES',priorityItems(report.capabilityFocus?.technical||[])],['LEADERSHIP & BEHAVIOURAL PRIORITIES',priorityItems(report.capabilityFocus?.behavioural||[])],['CAREER ACTIONS TO TAKE',(report.goalPath?.careerActions||[]).slice(0,3).map(step=>step.title)]];
+ for(const [heading,items] of quickGroups){lines(heading,{size:9,bold:true,color:C.purple});bulletList(items.length?items:['See the detailed plan below.']);gap(3);}
+ gap(4);ensure(54);rect(43,y-28,509,44,C.lavender);textAt(`${report.coverage?.assessed??0} of ${report.coverage?.total??0} essential capabilities assessed`,58,y-2,11,true,C.navy);textAt(`${report.priorities?.length??0} priority areas to build further`,58,y-20,10,false,C.purple);y-=57;
 
  title(`1. What you need to build for ${report.targetRole||'your goal'}`);
  const capabilityGroups=[['TECHNICAL CAPABILITIES',report.capabilityFocus?.technical||[]],['LEADERSHIP & BEHAVIOURAL CAPABILITIES',report.capabilityFocus?.behavioural||[]]];
@@ -62,7 +64,7 @@ export function buildReportPdf(report){
   resources('Free learning',s.learning?.free);resources('Paid courses',s.learning?.paid);resources('Optional certifications',s.learning?.certifications);
   if(s.learning?.freeGap)lines(s.learning.freeGap,{size:9,color:C.muted});gap(9);
  }
- title('4. Other capabilities your goal may require');
+ title('4. Other high-priority capabilities your goal may require');
  if(!report.additionalSkills?.length)lines('No additional role requirements were identified outside the essential skills tested.');
  for(const s of report.additionalSkills||[]){ensure(55);title(`${s.name} - Not tested`);labelled('WHAT IS EXPECTED',s.expectation);labelled('HOW TO BUILD IT',s.nextStep);labelled('HOW TO DEMONSTRATE IT',s.howToVerify);resources('Free resources',s.learning?.free?.slice(0,1));gap(6);}
  title('5. Your 30 / 60 / 90-day execution plan');
