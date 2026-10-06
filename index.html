@@ -146,7 +146,7 @@ body{background:#fff}p{color:#526078}main{max-width:1200px;margin:0 auto;padding
 <label for="learningHours">Time available for learning each week</label><select id="learningHours"><option>Under 2 hours</option><option>2–5 hours</option><option>5–10 hours</option><option>More than 10 hours</option><option selected>No preference</option></select>
 <label for="learningBudget">Budget for learning and certifications</label><select id="learningBudget"><option>Free resources only</option><option>Up to ₹5,000</option><option>₹5,000–₹20,000</option><option>₹20,000–₹50,000</option><option>Above ₹50,000</option><option selected>No preference</option></select>
 <label for="learningStyle">Preferred learning style</label><select id="learningStyle"><option>Self-paced online</option><option>Live online classes</option><option>Classroom training</option><option>Practical projects</option><option selected>No preference</option></select></div>
-<button class="btn" id="reportBtn" type="button">Generate my career development report →</button><div class="error" id="reportError" aria-live="polite"></div></section>
+<button class="btn" id="reportBtn" type="button">Generate my career development report →</button><p class="hint" id="reportStatus" aria-live="polite"></p><div class="error" id="reportError" aria-live="polite"></div></section>
 <section id="report" class="panel hidden"><div class="eyebrow">Personalised career report</div><h2>Your career development report</h2><p class="hint">Based on your profile and scenario-based assessment answers. Suggestions are for exploration, not verified suitability or hiring decisions.</p><p id="reportDate" class="muted"></p><div id="reportContent"></div><div class="notice no-print hidden" id="emailStatusNote" aria-live="polite"></div><button class="btn secondary no-print hidden" id="emailRetryBtn" type="button">Retry sending report email</button><div class="footeractions no-print"><button class="btn" id="printReportBtn" type="button">Print / Save as PDF</button><button class="btn secondary" id="reportNewBtn" type="button">Start New Assessment</button><button class="btn secondary" id="reportHistoryBtn" type="button" hidden aria-hidden="true">Previous assessments</button></div><div class="error" id="reportPageError" aria-live="polite"></div></section>
 </main>
 <footer class="professional-footer no-print"><div class="footer-inner"><div class="footer-brand"><img class="footer-logo" src="brand-logo.webp" alt="AI Early Career Guide" width="800" height="300"><div><h3>Career Guide for Professionals</h3><p>by AI Early Career Guide</p><a class="main-site-link" href="https://www.aiearlycareerguide.com/" style="font-size:12px">Explore the Student Guide ↗</a></div></div><nav aria-label="Professional assessment policies"><a href="know-more.html">Know More</a><a href="terms.html">Terms &amp; Conditions</a><a href="refund.html">Refund Policy</a><a href="privacy.html">Privacy Policy</a><a href="contact.html">Contact</a></nav></div><div class="footer-bottom">© 2026 AI Early Career Guide · Career Guide for Professionals.</div></footer>
@@ -618,12 +618,27 @@ function renderCareerReport(report,generatedAt){
  reportText(host,'p','This is an unproctored multiple-choice assessment. It indicates test performance and development priorities, not verified workplace competence, qualifications or a guarantee of employment.','report-meta');
  show('report');
 }
+const reportWait=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+function setReportPreferenceDisabled(disabled){for(const id of ['learningHours','learningBudget','learningStyle'])$(id).disabled=disabled;}
 async function loadCareerReport(){
  if(!liveSession){$('reportError').textContent='Reports are available after completing the live AI interview.';return;}
- if(reportBusy)return;reportBusy=true;$('reportError').textContent='';$('reportBtn').disabled=true;$('reportBtn').textContent='Generating your report…';
- try{const preferences={weeklyHours:$('learningHours').value,budget:$('learningBudget').value,learningStyle:$('learningStyle').value};const response=await apiCall('generate-report',{learningPreferences:preferences});renderCareerReport(response.report,response.generatedAt);showReportEmailStatus(response.emailStatus);}
+ if(reportBusy)return;
+ reportBusy=true;$('reportError').textContent='';$('reportStatus').textContent='';$('reportBtn').disabled=true;$('reportBtn').textContent='Preparing your report…';setReportPreferenceDisabled(true);
+ const preferences={weeklyHours:$('learningHours').value,budget:$('learningBudget').value,learningStyle:$('learningStyle').value};
+ try{
+  let polls=0;
+  while(true){
+   const response=await apiCall('generate-report',{learningPreferences:preferences});
+   if(!response.generating){$('reportStatus').textContent='';renderCareerReport(response.report,response.generatedAt);showReportEmailStatus(response.emailStatus);break;}
+   $('reportStatus').textContent=response.message||'Your report is being prepared with advanced reasoning. This can take a few minutes. Please keep this tab open.';
+   const waitMs=Math.min(Math.max(Number(response.pollAfterMs)||4000,2500),8000);
+   polls+=1;
+   if(polls>=180)throw Error('Your report is still being prepared. Your progress is saved — wait a few minutes and select this button again.');
+   await reportWait(waitMs);
+  }
+ }
  catch(error){$('reportError').textContent=error.message;}
- finally{reportBusy=false;$('reportBtn').disabled=false;$('reportBtn').textContent='View / generate my career development report →';}
+ finally{reportBusy=false;$('reportBtn').disabled=false;$('reportBtn').textContent='View / generate my career development report →';setReportPreferenceDisabled(false);}
 }
 // ── PAYMENT + EMAIL RESUME (no passwords or duplicate charges) ──
 function rupees(paise){return '₹'+(Number(paise)/100).toLocaleString('en-IN',{minimumFractionDigits:0,maximumFractionDigits:2});}
