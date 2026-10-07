@@ -40,6 +40,19 @@ const focusStatus=(priority)=>({
  'Not assessed':'Validate this capability'
 }[priority]||'Build and demonstrate');
 
+const FORBIDDEN_HEADLINE_LANGUAGE=/\b(unproctored|proctor(?:ed|ing)?|multiple[- ]choice|test (?:result|results|performance|format)|assessment (?:result|results|performance|format|method|methodology)|verified workplace competence|workplace competence|competence verification|disclaimer)\b/i;
+
+function safeGoalHeadline(value,targetRole=''){
+ const raw=str(value,180);
+ if(!raw)return null;
+ const tooLong=raw.split(/\s+/).filter(Boolean).length>12||raw.length>110;
+ if(!tooLong&&!FORBIDDEN_HEADLINE_LANGUAGE.test(raw))return raw;
+ const goal=str(targetRole,120);
+ const candidate=goal?`Build the capabilities and evidence needed to move toward ${goal}.`:'Build stronger role-ready evidence through focused capability development and practical career action.';
+ if(candidate.split(/\s+/).filter(Boolean).length<=12&&candidate.length<=110)return candidate;
+ return 'Build stronger role-ready evidence through focused capability development and practical career action.';
+}
+
 function safeProfileContext(profile={}){
  const out={};
  const ignored=new Set(['workArrangement','timeframe','relocation','jobSearchDuration','graduationWhen']);
@@ -52,13 +65,13 @@ function safeProfileContext(profile={}){
  return out;
 }
 
-export function validateReport(report,blueprint=[],history=[],untestedSkills=[],learningPreferences=null){
+export function validateReport(report,blueprint=[],history=[],untestedSkills=[],learningPreferences=null,targetRole=''){
  const preferences=validateLearningPreferences(learningPreferences);
  if(!report||typeof report!=='object')throw Error('Invalid report.');
  const summary=str(report.summary,520);if(!summary)throw Error('Missing summary.');
  const goalPath=report.goalPath;
  if(!goalPath||typeof goalPath!=='object')throw Error('Missing goal path.');
- const headline=str(goalPath.headline,180);if(!headline)throw Error('Missing goal-path headline.');
+ const headline=safeGoalHeadline(goalPath.headline,targetRole);if(!headline)throw Error('Missing goal-path headline.');
  if(!Array.isArray(goalPath.careerActions)||goalPath.careerActions.length<4||goalPath.careerActions.length>6)throw Error('Goal path needs 4–6 practical career actions.');
  const careerActions=goalPath.careerActions.map(raw=>{
   const title=str(raw?.title,100),action=str(raw?.action,520),outcome=str(raw?.outcome,280);
@@ -112,7 +125,7 @@ export function validateReport(report,blueprint=[],history=[],untestedSkills=[],
   behavioural:skillAssessments.filter(s=>s.type==='behavioural').map(capabilityItem)
  };
 
- return {reportVersion:4,summary,goalPath:{headline,careerActions},coverage:{assessed:progress.assessed,total:progress.total,answered:history.length},
+ return {reportVersion:5,summary,goalPath:{headline,careerActions},coverage:{assessed:progress.assessed,total:progress.total,answered:history.length},
   learningPreferences:preferences,learningCatalogueReviewed:CATALOG_VERSION,capabilityFocus,priorities,skillAssessments,additionalSkills,actionPlan,
   progressChecklist:skillAssessments.map(s=>({skill:s.name,deliverable:s.practiceTask,evidence:s.successIndicator}))};
 }
@@ -131,8 +144,7 @@ function reportInputs(profile,history,blueprint=[],untestedSkills=[],targetRole=
   return {skillId:skill.id,skill:skill.name,type:skill.type,roleExpectation:skill.benchmark,numberTested:record.answered,
    correct:record.correct,assessed:record.resolved,currentCompetency:label(record),
    topicsNeedingWork:selected.filter(h=>!h.correct).map(h=>({subskill:h.subskill,correctApproach:h.expectedAnswer,why:h.rationale})),
-   topicsAnsweredWell:selected.filter(h=>h.correct).map(h=>h.subskill),
-   note:'These are unproctored multiple-choice answers, not verified workplace competence.'};
+   topicsAnsweredWell:selected.filter(h=>h.correct).map(h=>h.subskill)};
  });
  const goal=targetRole||profile.targetJobTitle||profile.careerObjective||'the stated career goal';
  const profileContext=safeProfileContext(profile);
@@ -148,12 +160,14 @@ function reportRequestBody(profile,history,blueprint=[],untestedSkills=[],target
    'You are a senior career strategist and role-specific competency development adviser. Create a direct, practical career ACTION report, not a recap of interview answers.',
    'The report must answer two questions immediately: (1) What does this person need to build for the stated goal? (2) What should they practically do to get there?',
    'SUMMARY RULE: Keep summary to 1–2 crisp sentences, ideally under 45 words. Explicitly name the target role or goal and the single most important route to it. The user interface will show technical, leadership and career-action categories as bullets, so do not repeat long lists in summary.',
+   'HEADLINE RULE: The goalPath.headline is a career-action headline only. Keep it to 7–12 words and no more than 2–3 short lines on screen. It should describe the route toward the career goal, not the assessment method. Never mention proctoring, unproctored testing, multiple-choice questions, test or assessment results, verification, workplace competence, evidence confidence or disclaimer language in the headline.',
+   'ASSESSMENT-LIMITATION RULE: Do not put assessment-format or disclaimer language in summary, headline or careerActions. The application adds its own fixed assessment limitation separately. Focus these sections entirely on what the person should build and do next.',
    'GOAL PATH: Create 4–6 practical career actions in the order the person should take them. These actions must go beyond courses and skill learning. Keep each action concise: usually 1–2 short sentences plus a brief observable outcome.',
    'Choose only actions relevant to the person\'s goal and situation. Examples include: complete the detailed skill-building activities and create proof; speak with the manager/HOD about progression and ask what evidence is needed; seek stretch assignments; update the resume around the target competencies and measurable results; strengthen LinkedIn positioning and publish credible role-relevant content; connect with hiring managers, recruiters, alumni or senior practitioners; create job alerts and a disciplined application pipeline; build a portfolio/evidence pack; prepare role-specific interview stories and mock interviews; pursue returnships, internships or project experience where appropriate.',
    'DO NOT mechanically include every example. Tailor the route. If the person is pursuing an internal promotion, prioritise manager/HOD/sponsor conversations, role expectations and stretch scope. If pursuing an external move, prioritise CV/LinkedIn, networking, target-company research, applications and interview conversion. If switching careers, prioritise transferable skills, bridge projects and evidence. If returning after a career break, prioritise recent proof, a clear return narrative, network reactivation and suitable return/entry routes. If a recent graduate, prioritise projects, internships, portfolio, alumni/networking and entry-role search. If the goal is development in the current role rather than a job move, do not force job-search actions.',
    'Each goal-path action needs a short title, a concrete action (who/what/how often where useful), and an observable outcome that shows the step is complete. Avoid generic advice like "network more" or "improve LinkedIn".',
    'The stated target role and required skills are the organising framework. For EVERY tested essential skill, describe the role expectation, specific capability gap or next-level stretch, 2–3 concrete learning actions, a real-life exercise and an observable success criterion.',
-   'Use the provided deterministic test-performance label and incorrect subskills to identify gaps. Never claim verified on-the-job competence from multiple-choice performance.',
+   'Use the provided deterministic performance label and incorrect subskills to identify development priorities. Treat these only as directional assessment evidence. Do not discuss the assessment format or verification methodology in the user-facing narrative.',
    'Do NOT quote, narrate or reproduce the user\'s answers, answer selections, project stories or question text. Use findings to give skill-focused recommendations instead.',
    'For correct answers throughout, describe next-level development rather than invent a deficit. If no or limited graded evidence, mark advice as exploratory rather than claiming a gap.',
    'For the supplied OTHER required skills NOT tested (already prioritised to the most important few), give one concise practical next step and one concise way to demonstrate the expectation. Never assign a proficiency level to untested skills.',
@@ -209,6 +223,6 @@ export function completeReportGeneration(result,profile,history,blueprint=[],unt
  if(result.status==='incomplete')throw new ApiError(502,'The report was incomplete. Please retry.');
  if(result.status==='failed'||result.status==='cancelled')throw new ApiError(502,'The report could not be completed. Please retry.');
  if(result.status!=='completed')return null;
- try{return {...validateReport(JSON.parse(textFromResponse(result)),blueprint,history,untestedSkills,preferences),targetRole:goal};}
+ try{return {...validateReport(JSON.parse(textFromResponse(result)),blueprint,history,untestedSkills,preferences,goal),targetRole:goal};}
  catch(err){console.warn('Invalid generated report',err.message);throw new ApiError(502,'The report needs regenerating. Please retry.');}
 }

@@ -7,7 +7,7 @@ import {sendReportEmail} from './_lib/commerce.js';
 
 const POLL_AFTER_MS=3000;
 const JOB_LEASE_MS=20*60*1000;
-const REPORT_VERSION=4;
+const REPORT_VERSION=5;
 
 function iso(value){
  try{return value?.toDate?.()?.toISOString?.()||null;}catch{return null;}
