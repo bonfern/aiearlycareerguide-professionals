@@ -8,6 +8,9 @@ import {sha} from '../api/_lib/security.js';
 
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 const source=path=>readFileSync(new URL(path,import.meta.url),'utf8');
+const refundPolicy=source('../refund.html');
+const contactPage=source('../contact.html');
+const siteCss=source('../professional-site.css');
 
 test('the server always prices standard, percentage, fixed and free coupons in paise',()=>{
  assert.equal(PRICE_PAISE,49900);
@@ -35,12 +38,12 @@ test('a forged Razorpay callback cannot validate',()=>{
 test('report email contains all report sections and escapes user-controlled HTML',()=>{
  const html=receiptHtml({targetRole:'Director <script>alert(1)</script>',summary:'Summary & plan',skillAssessments:[{name:'Strategy',targetBenchmark:'Lead strategy',currentCompetency:'Developing',gap:'Benefits tracking',actions:['Validate value','Review costs'],practiceTask:'Draft business case',successIndicator:'Signed-off plan'}],additionalSkills:[{name:'Negotiation',expectation:'Secure support',nextStep:'Practise',howToVerify:'Role play'}],actionPlan:[{period:'Days 1–30',focus:'Baseline',actions:['Practise analysis']} ]});
  assert.match(html,/Skill|skill/i);assert.match(html,/Negotiation/);assert.match(html,/Days 1–30/);
- assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;script&gt;/);
+ assert.doesNotMatch(html,/<script>/);assert.match(html,/&lt;script&gt;/);assert.match(html,/7-day, 100% money-back guarantee/i);assert.match(html,/refund\.html/);
 });
 test('frontend includes payment-first flow, recovery and email retry, and still parses',()=>{
  new Script(html.match(/<script>([\s\S]*?)<\/script>/)[1]);
  for(const id of ['checkoutEmail','couponCode','applyCoupon','payBtn','recoverPaymentBtn','emailRetryBtn','previewEntryBtn'])assert.match(html,new RegExp(`id="${id}"`));
- assert.match(html,/Razorpay/);assert.match(html,/beginPaidLive/);
+ assert.match(html,/Razorpay/);assert.match(html,/beginPaidLive/);assert.match(html,/100% MONEY-BACK GUARANTEE/);assert.match(html,/brand-logo-email\.png/);
 });
 test('backend gates sessions on paid orders and verifies payment amount and captured state',()=>{
  const start=source('../api/start.js'),verify=source('../api/verify-payment.js'),generate=source('../api/generate-report.js');
@@ -48,4 +51,27 @@ test('backend gates sessions on paid orders and verifies payment amount and capt
  assert.match(verify,/signatureValid/);assert.match(verify,/payment\.status!=='captured'/);
  assert.match(verify,/payment\.amount!==order\.amount/);
  assert.match(generate,/sendReportEmail/);assert.match(source('../api/send-report.js'),/authorize\(req\)/);
+});
+
+
+test('branding and the no-questions-asked refund promise are consistent across public outputs',()=>{
+ for(const file of ['../know-more.html','../contact.html','../terms.html','../privacy.html','../refund.html']){
+  const page=source(file);
+  assert.match(page,/brand-logo\.webp/);
+  assert.match(page,/favicon\.ico/);
+  assert.match(page,/Career Guide for Professionals/);
+ }
+ assert.match(refundPolicy,/7 calendar days/i);
+ assert.match(refundPolicy,/No questions asked/i);
+ assert.match(refundPolicy,/No reason or justification/i);
+ assert.match(refundPolicy,/Request a Refund/);
+ assert.match(contactPage,/Payment%20ID%20or%20Order%20ID/);
+ assert.match(siteCss,/\.guarantee-strip/);
+ assert.match(siteCss,/\.report-print-brand/);
+ const commerce=source('../api/_lib/commerce.js');
+ assert.match(commerce,/AI-Early-Career-Guide-Professional-Report\.pdf/);
+ assert.match(commerce,/AI Early Career Guide \| Your Professional Career Report/);
+ const pdf=source('../api/_lib/pdf-report.js');
+ assert.match(pdf,/\/Title \(\$\{esc\('AI Early Career Guide - Professional Career Report'\)\}\)/);
+ assert.match(pdf,/\/Info \$\{info\} 0 R/);
 });

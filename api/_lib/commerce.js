@@ -62,6 +62,8 @@ export function signatureValid(orderId,paymentId,signature,secret=process.env.RA
 // The PNG logo is deliberately separate from the WebP used on the website and in the PDF.
 const EMAIL_HOME='https://www.aiearlycareerguide.com/professionals';
 const EMAIL_LOGO=EMAIL_HOME+'/brand-logo-email.png';
+const EMAIL_REFUND=EMAIL_HOME+'/refund.html';
+const EMAIL_CONTACT=EMAIL_HOME+'/contact.html';
 const escEmail=value=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
 function emailFrame({subject,eyebrow,body,footerNote=''}){
  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="light"><meta name="supported-color-schemes" content="light"><title>${escEmail(subject)}</title><style>
@@ -82,7 +84,7 @@ function emailFrame({subject,eyebrow,body,footerNote=''}){
  <div style="font-size:19px;line-height:1.3;font-weight:bold;color:#17213d;padding-top:12px">Career Guide for <span style="color:#5938d4">Professionals</span></div>
  <div style="font-size:12px;line-height:1.5;color:#59647c;padding-top:3px">by AI Early Career Guide</div></td></tr>
  <tr><td class="email-pad email-text" style="padding:24px 26px;font-size:15px;line-height:1.6;word-wrap:break-word;overflow-wrap:break-word">${body}</td></tr>
- <tr><td class="email-pad" style="padding:18px 26px;background:#17213d;color:#f2efff;font-size:12px;line-height:1.6;word-wrap:break-word"><strong style="font-size:13px">Career Guide for Professionals</strong><br><a href="${EMAIL_HOME}" style="color:#d8ccff;text-decoration:underline">aiearlycareerguide.com/professionals</a>${footerNote?`<div style="padding-top:10px;color:#e7dfff">${footerNote}</div>`:''}</td></tr>
+ <tr><td class="email-pad" style="padding:18px 26px;background:#17213d;color:#f2efff;font-size:12px;line-height:1.6;word-wrap:break-word"><strong style="font-size:13px">Career Guide for Professionals</strong><br><a href="${EMAIL_HOME}" style="color:#d8ccff;text-decoration:underline">aiearlycareerguide.com/professionals</a><div style="padding-top:8px"><a href="${EMAIL_REFUND}" style="color:#d8ccff;text-decoration:underline">Refund Policy</a> &nbsp;·&nbsp; <a href="${EMAIL_CONTACT}" style="color:#d8ccff;text-decoration:underline">Contact Support</a></div>${footerNote?`<div style="padding-top:10px;color:#e7dfff">${footerNote}</div>`:''}</td></tr>
  </table></td></tr></table></body></html>`;
 }
 const emailP=(label,value)=>`<p style="margin:0 0 10px;font-size:15px;line-height:1.6"><strong>${escEmail(label)}:</strong> ${escEmail(value)}</p>`;
@@ -116,8 +118,9 @@ export function receiptHtml(report){
  ${h2('3. Your skill-by-skill development plan')}${skills||'<p>Not enough information to assess these skills yet.</p>'}
  ${h2('4. Other high-priority capabilities your goal may require')}${extras||'<p>No additional role requirements were identified outside the essential skills tested.</p>'}
  ${h2('5. Your 30 / 60 / 90-day execution plan')}${plan}
+ <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;border-collapse:collapse;margin:20px 0;background:#f4f0ff"><tr><td style="padding:14px 15px;border-left:4px solid #6944e8"><strong>7-day, 100% money-back guarantee</strong><br><span style="color:#59647c">If this personalised report does not meet your expectations, request a full refund within 7 calendar days. No explanation is required. <a href="${EMAIL_REFUND}" style="color:#5938d4;text-decoration:underline">View the refund process</a>.</span></td></tr></table>
  <p style="font-size:12px;line-height:1.65;color:#59647c;margin-top:22px">This multiple-choice assessment shows your test performance; it does not prove workplace competence or guarantee employment. Confirm course fees and eligibility with the provider before enrolling. Your branded PDF report is attached.</p>`;
- return emailFrame({subject:'Your Career Action & Skill Development Report',eyebrow:'Your practical route to your stated career goal is ready.',body:content});
+ return emailFrame({subject:'AI Early Career Guide | Your Professional Career Report',eyebrow:'Your practical route to your stated career goal is ready.',body:content,footerNote:'Your paid assessment is protected by our 7-day, 100% money-back guarantee. No questions asked.'});
 }
 // Firestore lease + Resend idempotency key avoid duplicate sends on retries.
 export async function sendReportEmail(ref){
@@ -143,7 +146,7 @@ export async function sendReportEmail(ref){
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
   let response,body;
   try{
-   response=await fetch('https://api.resend.com/emails',{method:'POST',signal:controller.signal,headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json','Idempotency-Key':`career-report-${reserved.sessionId}`},body:JSON.stringify({from:process.env.REPORT_FROM_EMAIL,to:[reserved.to],subject:'Your Career Action & Skill Development Report — PDF attached',html:receiptHtml(reserved.report),attachments:[{filename:'career-action-skill-development-report.pdf',content:buildReportPdf(reserved.report).toString('base64'),content_type:'application/pdf'}]})});
+   response=await fetch('https://api.resend.com/emails',{method:'POST',signal:controller.signal,headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json','Idempotency-Key':`career-report-${reserved.sessionId}`},body:JSON.stringify({from:process.env.REPORT_FROM_EMAIL,to:[reserved.to],subject:'AI Early Career Guide | Your Professional Career Report — PDF attached',html:receiptHtml(reserved.report),attachments:[{filename:'AI-Early-Career-Guide-Professional-Report.pdf',content:buildReportPdf(reserved.report).toString('base64'),content_type:'application/pdf'}]})});
    body=await response.json();
   }finally{clearTimeout(timer);}
   if(!response.ok||!body?.id){console.error('Resend error status',response.status,body?.name||'');throw new ApiError(502,'Report email could not be sent. You can retry from the report page.');}
@@ -191,8 +194,9 @@ export function accessEmailHtml({link,free=false,amount=0}){
  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:20px 0"><tr><td align="center" style="border-radius:8px;background:#603be5"><a class="email-button" href="${safeLink}" style="display:block;padding:15px 18px;font-size:16px;line-height:1.4;font-weight:bold;text-align:center;color:#ffffff;text-decoration:none;border-radius:8px;background:#603be5">Start or Resume Assessment →</a></td></tr></table>
  <p style="font-size:13px;line-height:1.6;color:#59647c;margin:18px 0">This private link works once and expires after seven days. Do not forward it. If it expires, enter your email on our website and select Continue Assessment.</p>
  <p style="font-size:13px;line-height:1.6;color:#59647c;margin:12px 0">Your finished career report will be emailed to this address.</p>
- <p style="font-size:13px;line-height:1.6;margin:14px 0 0">Need help? <a href="${EMAIL_HOME}/contact.html" style="color:#5938d4;text-decoration:underline">Contact support</a>.</p>`;
- return emailFrame({subject:title,eyebrow:free?'Your free assessment access is confirmed.':'Your payment was successful. Your assessment link is inside.',body:content});
+ ${free?'':`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin:18px 0;background:#f4f0ff"><tr><td style="padding:13px 14px;border-left:4px solid #6944e8"><strong>7-day, 100% money-back guarantee</strong><br><span style="color:#59647c">If the final report does not meet your expectations, request a full refund within 7 calendar days. No explanation is required.</span></td></tr></table>`}
+ <p style="font-size:13px;line-height:1.6;margin:14px 0 0">Need help? <a href="${EMAIL_CONTACT}" style="color:#5938d4;text-decoration:underline">Contact support</a>.</p>`;
+ return emailFrame({subject:free?'AI Early Career Guide | Your Complimentary Professional Assessment':'AI Early Career Guide | Your Professional Assessment Is Ready',eyebrow:free?'Your free assessment access is confirmed.':'Your payment was successful. Your assessment link is inside.',body:content,footerNote:free?'This assessment was complimentary; no payment was collected.':'Your paid assessment includes our 7-day, 100% money-back guarantee.'});
 }
 
 // Firestore lease prevents duplicate confirmation emails when browser + webhook race.
@@ -222,7 +226,7 @@ export async function sendAccessEmail(orderRef,{resend=false}={}){
     headers:{Authorization:`Bearer ${process.env.RESEND_API_KEY}`,'Content-Type':'application/json',
       'Idempotency-Key':`career-access-${orderRef.id}-${decision.token.split('.')[2]}`},
     body:JSON.stringify({from:process.env.REPORT_FROM_EMAIL,to:[decision.email],
-      subject:decision.free?'Your complimentary Career Professionals assessment is ready':'Payment received — Start your Career Professionals assessment',
+      subject:decision.free?'AI Early Career Guide | Your Complimentary Professional Assessment':'AI Early Career Guide | Payment Received — Start Your Professional Assessment',
       html:accessEmailHtml({link:url.toString(),free:decision.free,amount:decision.amount})})});
    payload=await response.json();
   }finally{clearTimeout(timer);}

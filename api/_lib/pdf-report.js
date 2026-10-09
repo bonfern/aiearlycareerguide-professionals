@@ -78,6 +78,7 @@ export function buildReportPdf(report){
  const objs=[null],add=body=>{objs.push(Buffer.isBuffer(body)?body:buffer(body));return objs.length-1;};
  const logo=Buffer.from(REPORT_BRAND_LOGO.jpegBase64,'base64');
  const catalog=add('');const root=add('');
+ const info=add(`<< /Title (${esc('AI Early Career Guide - Professional Career Report')}) /Author (${esc('AI Early Career Guide')}) /Subject (${esc('Personalised Career Action and Skill Development Report')}) /Creator (${esc('Career Guide for Professionals')}) /Producer (${esc('AI Early Career Guide')}) /Keywords (${esc('career assessment, professional development, skill gap, 30 60 90 day plan')}) >>`);
  const regular=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
  const bold=add('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
  const logoObj=add(Buffer.concat([buffer(`<< /Type /XObject /Subtype /Image /Width ${REPORT_BRAND_LOGO.width} /Height ${REPORT_BRAND_LOGO.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${logo.length} >>\nstream\n`),logo,buffer('\nendstream')]));
@@ -101,6 +102,6 @@ export function buildReportPdf(report){
  for(let i=1;i<objs.length;i++){offsets.push(offset);const ob=Buffer.concat([buffer(`${i} 0 obj\n`),objs[i],buffer('\nendobj\n')]);parts.push(ob);offset+=ob.length;}
  const xref=offset;let trailer=`xref\n0 ${objs.length}\n0000000000 65535 f \n`;
  for(let i=1;i<objs.length;i++)trailer+=`${String(offsets[i]).padStart(10,'0')} 00000 n \n`;
- trailer+=`trailer\n<< /Size ${objs.length} /Root ${catalog} 0 R >>\nstartxref\n${xref}\n%%EOF`;
+ trailer+=`trailer\n<< /Size ${objs.length} /Root ${catalog} 0 R /Info ${info} 0 R >>\nstartxref\n${xref}\n%%EOF`;
  parts.push(buffer(trailer));return Buffer.concat(parts);
 }
